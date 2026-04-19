@@ -78,15 +78,11 @@ export class FreehandTool {
 
   trySnapShape() {
     if (!this.isDrawing || !this.currentElement || this.hasSnapped) return;
-    if (this.currentElement.points.length < 10) return;
+    if (this.currentElement.points.length < 15) return;
 
     const points = this.currentElement.points;
-    const start = points[0];
-    const end = points[points.length - 1];
-    const dx = end[0] - start[0];
-    const dy = end[1] - start[1];
-    const distStartEnd = Math.sqrt(dx * dx + dy * dy);
-
+    const pathLength = this.calculatePathLength(points);
+    
     // Calculate bounding box
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     points.forEach(p => {
@@ -97,6 +93,15 @@ export class FreehandTool {
     });
     const width = maxX - minX;
     const height = maxY - minY;
+
+    // Minimum size thresholds to prevent small strokes (like arrow heads) from snapping
+    if (pathLength < 60 || (width < 30 && height < 30)) return;
+
+    const start = points[0];
+    const end = points[points.length - 1];
+    const dx = end[0] - start[0];
+    const dy = end[1] - start[1];
+    const distStartEnd = Math.sqrt(dx * dx + dy * dy);
 
     // Logic to distinguish between Line and Ellipse
     // If endpoints are close relative to overall size, it's a closed shape (Ellipse)
