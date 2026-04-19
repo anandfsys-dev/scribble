@@ -28,7 +28,9 @@ export class CanvasState {
     this.currentStyle = {
       strokeColor: '#1e1e1e',
       fillColor: 'transparent',
-      strokeWidth: 1
+      strokeWidth: 1,
+      fontSize: 24,
+      textColor: '#1e1e1e'
     };
     
     // Render loop state

@@ -98,13 +98,16 @@ export class Renderer {
         break;
         
       case 'text':
-        this.ctx.font = `${style.strokeWidth * 24}px 'Caveat', cursive`; // Use handwritten font
-        this.ctx.fillStyle = style.strokeColor;
-        this.ctx.textAlign = 'left'; // Use left alignment so text grows right
+        const fontSize = style.fontSize || 24;
+        const textColor = style.textColor || style.strokeColor;
+        this.ctx.font = `${fontSize}px 'Caveat', cursive`; 
+        this.ctx.fillStyle = textColor;
+        this.ctx.textAlign = 'left'; 
         this.ctx.textBaseline = 'middle';
+        
         // handle multiline
         const lines = element.text.split('\n');
-        const lineHeight = style.strokeWidth * 24 * 1.2;
+        const lineHeight = fontSize * 1.2;
         const totalHeight = lines.length * lineHeight;
         const width = Math.max(...lines.map(l => this.ctx.measureText(l).width));
         

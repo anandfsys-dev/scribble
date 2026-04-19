@@ -154,6 +154,13 @@ function updatePalette(state) {
     btn.dataset.color = color;
   });
 
+  document.querySelectorAll('.text-color-btn').forEach(btn => {
+    const index = btn.dataset.colorIndex;
+    const color = palette.stroke[index];
+    btn.style.backgroundColor = color;
+    btn.dataset.color = color;
+  });
+
   // Update existing elements and current style
   const sIdx = oldPalette.stroke.indexOf(state.currentStyle.strokeColor);
   if (sIdx !== -1) state.currentStyle.strokeColor = palette.stroke[sIdx];
@@ -161,12 +168,18 @@ function updatePalette(state) {
   const fIdx = oldPalette.fill.indexOf(state.currentStyle.fillColor);
   if (fIdx !== -1) state.currentStyle.fillColor = palette.fill[fIdx];
 
+  const tIdx = oldPalette.stroke.indexOf(state.currentStyle.textColor);
+  if (tIdx !== -1) state.currentStyle.textColor = palette.stroke[tIdx];
+
   state.elements.forEach(el => {
     const s = oldPalette.stroke.indexOf(el.style.strokeColor);
     if (s !== -1) el.style.strokeColor = palette.stroke[s];
     
     const f = oldPalette.fill.indexOf(el.style.fillColor);
     if (f !== -1) el.style.fillColor = palette.fill[f];
+
+    const t = oldPalette.stroke.indexOf(el.style.textColor);
+    if (t !== -1) el.style.textColor = palette.stroke[t];
   });
 
   state.isDirty = true;
@@ -239,6 +252,26 @@ function setupProperties(state) {
       btn.classList.add('active');
       state.currentStyle.strokeWidth = parseInt(btn.dataset.width);
       state.applyStyleToSelection('strokeWidth', parseInt(btn.dataset.width));
+    });
+  });
+
+  // Text Color
+  document.querySelectorAll('.text-color-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.text-color-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.currentStyle.textColor = btn.dataset.color;
+      state.applyStyleToSelection('textColor', btn.dataset.color);
+    });
+  });
+
+  // Font Size
+  document.querySelectorAll('.font-size-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      document.querySelectorAll('.font-size-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.currentStyle.fontSize = parseInt(btn.dataset.size);
+      state.applyStyleToSelection('fontSize', parseInt(btn.dataset.size));
     });
   });
 }
