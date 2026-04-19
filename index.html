@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Scribble - Hand-drawn Board</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 overflow-hidden">
+    <div id="app" class="relative w-full h-screen">
+      
+      <!-- Top Toolbar (Tools) -->
+      <div class="toolbar top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 pointer-events-auto transition-all">
+        <button id="tool-select" class="tool-btn active relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Select (1)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
+          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">1</span>
+        </button>
+        <button id="tool-rectangle" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Rectangle (2)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">2</span>
+        </button>
+        <button id="tool-ellipse" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Ellipse (3)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">3</span>
+        </button>
+        <button id="tool-line" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Line (4)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg>
+          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">4</span>
+        </button>
+        <button id="tool-arrow" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Arrow (5)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19 7-7-7-7"/><path d="M19 12H5"/></svg>
+          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">5</span>
+        </button>
+        <button id="tool-pen" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Draw (6)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">6</span>
+        </button>
+        <button id="tool-text" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Text (7)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">7</span>
+        </button>
+      </div>
+
+      <!-- Left Panel (Properties) -->
+      <div class="properties-panel top-1/2 left-4 transform -translate-y-1/2 flex flex-col gap-4 p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 w-12 hover:w-48 transition-all overflow-hidden group">
+        <!-- Stroke Color -->
+        <div class="flex flex-col gap-2">
+          <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Stroke Color</span>
+          <div class="flex flex-wrap gap-2 w-40">
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color="#1e1e1e" style="background-color: #1e1e1e;"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#e03131" style="background-color: #e03131;"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#2f9e44" style="background-color: #2f9e44;"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#1971c2" style="background-color: #1971c2;"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#f08c00" style="background-color: #f08c00;"></button>
+          </div>
+        </div>
+        
+        <!-- Fill Color -->
+        <div class="flex flex-col gap-2 mt-2">
+          <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Background Color</span>
+          <div class="flex flex-wrap gap-2 w-40">
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color="transparent" style="background: repeating-linear-gradient(45deg, transparent, transparent 3px, #e2e8f0 3px, #e2e8f0 6px);"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#ffc9c9" style="background-color: #ffc9c9;"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#b2f2bb" style="background-color: #b2f2bb;"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#a5d8ff" style="background-color: #a5d8ff;"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#ffec99" style="background-color: #ffec99;"></button>
+          </div>
+        </div>
+
+        <!-- Stroke Width -->
+        <div class="flex flex-col gap-2 mt-2">
+          <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Stroke Width</span>
+          <div class="flex gap-2 w-40">
+            <button class="width-btn w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center active" data-width="1">
+              <div class="w-4 h-[1px] bg-current"></div>
+            </button>
+            <button class="width-btn w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center" data-width="3">
+              <div class="w-4 h-[3px] bg-current"></div>
+            </button>
+            <button class="width-btn w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center" data-width="5">
+              <div class="w-4 h-[5px] bg-current"></div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Panel (Export) -->
+      <div class="actions-panel top-4 right-4 flex gap-2">
+        <button id="btn-clear" class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg shadow-sm hover:bg-red-100 dark:hover:bg-red-900/50 text-sm font-medium transition-colors" title="Clear Canvas">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+          Clear
+        </button>
+        <button id="btn-export-json" class="flex items-center gap-2 px-3 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-sm font-medium transition-colors" title="Export JSON">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/><path d="M18 18h2"/><path d="M18 22h2"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/></svg>
+          JSON
+        </button>
+        <button id="btn-export-md" class="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 text-sm font-medium transition-colors" title="Export Markdown">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+          Export .MD
+        </button>
+      </div>
+
+      <!-- Canvas -->
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <!-- Active Tool Styles for Buttons -->
+    <style>
+      .tool-btn.active {
+        background-color: #e0e7ff;
+        color: #4f46e5;
+      }
+      .dark .tool-btn.active {
+        background-color: rgba(79, 70, 229, 0.3);
+        color: #818cf8;
+      }
+      .color-btn.active, .fill-btn.active, .width-btn.active {
+        outline: 2px solid #4f46e5;
+        outline-offset: 2px;
+      }
+    </style>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
