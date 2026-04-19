@@ -10,12 +10,13 @@ export class Renderer {
     const { type, x, y, style } = element;
     
     // Convert our internal style to roughjs options
+    const isSmooth = style.smoothMode;
     const roughOptions = {
       stroke: style.strokeColor,
       strokeWidth: style.strokeWidth,
       fill: style.fillColor === 'transparent' ? undefined : style.fillColor,
       fillStyle: 'hachure',
-      roughness: type === 'freehand' ? 0.8 : 1.5,
+      roughness: type === 'freehand' ? (isSmooth ? 0 : 0.8) : 1.5,
       bowing: type === 'freehand' ? 0 : 1
     };
 
@@ -99,7 +100,7 @@ export class Renderer {
       case 'text':
         this.ctx.font = `${style.strokeWidth * 24}px 'Caveat', cursive`; // Use handwritten font
         this.ctx.fillStyle = style.strokeColor;
-        this.ctx.textAlign = 'center';
+        this.ctx.textAlign = 'left'; // Use left alignment so text grows right
         this.ctx.textBaseline = 'middle';
         // handle multiline
         const lines = element.text.split('\n');
@@ -118,7 +119,7 @@ export class Renderer {
         });
         
         if (isSelected) {
-          this.drawBoundingBox(x - width/2, y - totalHeight/2, width, totalHeight);
+          this.drawBoundingBox(x, y - totalHeight/2, width, totalHeight);
         }
         break;
     }

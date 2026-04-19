@@ -241,6 +241,13 @@ function setupProperties(state) {
       state.applyStyleToSelection('strokeWidth', parseInt(btn.dataset.width));
     });
   });
+
+  // Smooth Mode
+  const smoothModeChk = document.getElementById('chk-smooth-mode');
+  smoothModeChk.addEventListener('change', () => {
+    state.currentStyle.smoothMode = smoothModeChk.checked;
+    state.applyStyleToSelection('smoothMode', smoothModeChk.checked);
+  });
 }
 
 function setupExport(state) {
