@@ -1,18 +1,28 @@
 @import "tailwindcss";
 
+@theme {
+  --variant-dark: (&:where(.dark, .dark *));
+}
+
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
+  color: #1e293b;
   background-color: #f8f9fa;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+:root.dark {
+  color: #e2e8f0;
+  background-color: #0f172a;
 }
 
 body {
@@ -22,6 +32,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   overflow: hidden;
+  background: transparent; /* Let :root handle the background */
 }
 
 #app {
@@ -44,10 +55,9 @@ canvas {
   z-index: 20;
 }
 
-/* Base dark theme support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #e2e8f0;
-    background-color: #0f172a;
-  }
-}
+#sun-icon { display: none; }
+#moon-icon { display: block; }
+
+.dark #sun-icon { display: block; }
+.dark #moon-icon { display: none; }
+

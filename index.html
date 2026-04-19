@@ -49,24 +49,24 @@
         <!-- Stroke Color -->
         <div class="flex flex-col gap-2">
           <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Stroke Color</span>
-          <div class="flex flex-wrap gap-2 w-40">
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color="#1e1e1e" style="background-color: #1e1e1e;"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#e03131" style="background-color: #e03131;"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#2f9e44" style="background-color: #2f9e44;"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#1971c2" style="background-color: #1971c2;"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#f08c00" style="background-color: #f08c00;"></button>
+          <div id="stroke-palette" class="flex flex-wrap gap-2 w-40">
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color-index="0"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="1"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="2"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="3"></button>
+            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="4"></button>
           </div>
         </div>
         
         <!-- Fill Color -->
         <div class="flex flex-col gap-2 mt-2">
           <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Background Color</span>
-          <div class="flex flex-wrap gap-2 w-40">
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color="transparent" style="background: repeating-linear-gradient(45deg, transparent, transparent 3px, #e2e8f0 3px, #e2e8f0 6px);"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#ffc9c9" style="background-color: #ffc9c9;"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#b2f2bb" style="background-color: #b2f2bb;"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#a5d8ff" style="background-color: #a5d8ff;"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color="#ffec99" style="background-color: #ffec99;"></button>
+          <div id="fill-palette" class="flex flex-wrap gap-2 w-40">
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color-index="0"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="1"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="2"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="3"></button>
+            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="4"></button>
           </div>
         </div>
 
@@ -89,18 +89,23 @@
 
       <!-- Actions Panel (Export) -->
       <div class="actions-panel top-4 right-4 flex gap-2">
+        <button id="btn-theme" class="p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-700 dark:text-slate-300 transition-colors" title="Toggle Theme">
+          <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+          <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+        </button>
         <button id="btn-clear" class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg shadow-sm hover:bg-red-100 dark:hover:bg-red-900/50 text-sm font-medium transition-colors" title="Clear Canvas">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
           Clear
         </button>
         <button id="btn-export-json" class="flex items-center gap-2 px-3 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-sm font-medium transition-colors" title="Export JSON">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10.4 12.6a2 2 0 1 1 3 3L8 21l-4 1 1-4Z"/><path d="M18 18h2"/><path d="M18 22h2"/><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/></svg>
-          JSON
-        </button>
-        <button id="btn-export-md" class="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 text-sm font-medium transition-colors" title="Export Markdown">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          Export .MD
+          Export JSON
         </button>
+        <button id="btn-import-json" class="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 text-sm font-medium transition-colors" title="Import JSON">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+          Import JSON
+        </button>
+        <input type="file" id="input-import-json" accept=".json" class="hidden">
       </div>
 
       <!-- Canvas -->
