@@ -14,9 +14,9 @@ export class Renderer {
       stroke: style.strokeColor,
       strokeWidth: style.strokeWidth,
       fill: style.fillColor === 'transparent' ? undefined : style.fillColor,
-      fillStyle: 'hachure', // or 'solid', 'zigzag' etc based on preferred feel
-      roughness: 1.5,
-      bowing: 1
+      fillStyle: 'hachure',
+      roughness: type === 'freehand' ? 0.8 : 1.5,
+      bowing: type === 'freehand' ? 0 : 1
     };
 
     this.ctx.save();
@@ -90,8 +90,8 @@ export class Renderer {
         
       case 'freehand':
         if (element.points.length > 1) {
-          // roughjs curve or linear path
-          this.rc.linearPath(element.points, roughOptions);
+          // Use curve instead of linearPath for smoother, rounder shapes
+          this.rc.curve(element.points, roughOptions);
         }
         if (isSelected) this.drawBoundingBoxForPoints(element.points);
         break;
