@@ -35,14 +35,30 @@ export class TextTool {
     textarea.style.zIndex = '100';
     textarea.style.textAlign = 'left';
     textarea.style.transform = 'translate(0, -50%)';
+    textarea.style.whiteSpace = 'nowrap';
+    textarea.style.width = 'auto';
+    textarea.style.minWidth = '10px';
 
     document.getElementById('app').appendChild(textarea);
     
-    // Auto-resize textarea vertically based on content
-    textarea.addEventListener('input', () => {
+    // Auto-resize textarea horizontally and vertically based on content
+    const resize = () => {
+      // Use a temporary span to measure text width
+      const span = document.createElement('span');
+      span.style.font = textarea.style.font;
+      span.style.visibility = 'hidden';
+      span.style.position = 'absolute';
+      span.style.whiteSpace = 'pre';
+      span.innerText = textarea.value || ' ';
+      document.body.appendChild(span);
+      textarea.style.width = (span.offsetWidth + 20) + 'px';
+      document.body.removeChild(span);
+      
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
-    });
+    };
+    textarea.addEventListener('input', resize);
+    resize();
 
     // Timeout to ensure focus happens
     setTimeout(() => textarea.focus(), 10);
@@ -107,12 +123,25 @@ export class TextTool {
     textarea.style.zIndex = '100';
     textarea.style.textAlign = 'left';
     textarea.style.transform = 'translate(0, -50%)';
+    textarea.style.whiteSpace = 'nowrap';
+    textarea.style.width = 'auto';
+    textarea.style.minWidth = '10px';
     textarea.value = element.text;
 
     document.getElementById('app').appendChild(textarea);
     
-    // Auto-resize textarea vertically based on content
+    // Auto-resize textarea horizontally and vertically based on content
     const resize = () => {
+      const span = document.createElement('span');
+      span.style.font = textarea.style.font;
+      span.style.visibility = 'hidden';
+      span.style.position = 'absolute';
+      span.style.whiteSpace = 'pre';
+      span.innerText = textarea.value || ' ';
+      document.body.appendChild(span);
+      textarea.style.width = (span.offsetWidth + 20) + 'px';
+      document.body.removeChild(span);
+
       textarea.style.height = 'auto';
       textarea.style.height = textarea.scrollHeight + 'px';
     };

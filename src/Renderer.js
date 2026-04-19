@@ -123,11 +123,29 @@ export class Renderer {
         
         if (isSelected) {
           this.drawBoundingBox(x, y - totalHeight/2, width, totalHeight);
-          // Draw a small resize handle for text on the right
+          
+          // Draw 8 resize handles
+          const handlePositions = [
+            { x: x, y: y - totalHeight/2 }, // NW
+            { x: x + width/2, y: y - totalHeight/2 }, // N
+            { x: x + width, y: y - totalHeight/2 }, // NE
+            { x: x + width, y: y }, // E
+            { x: x + width, y: y + totalHeight/2 }, // SE
+            { x: x + width/2, y: y + totalHeight/2 }, // S
+            { x: x, y: y + totalHeight/2 }, // SW
+            { x: x, y: y } // W
+          ];
+
           this.ctx.fillStyle = '#6366f1';
-          this.ctx.beginPath();
-          this.ctx.arc(x + width, y, 4, 0, Math.PI * 2);
-          this.ctx.fill();
+          this.ctx.strokeStyle = '#ffffff';
+          this.ctx.lineWidth = 1;
+          
+          handlePositions.forEach(pos => {
+            this.ctx.beginPath();
+            this.ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+          });
         }
         break;
     }

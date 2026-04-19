@@ -20,14 +20,27 @@ export class SelectTool {
     // Check if we clicked a resize handle of a selected text element
     const selectedText = this.state.selection.find(el => el.type === 'text');
     if (selectedText) {
-      const handleX = selectedText.x + (selectedText.width || 0);
-      const handleY = selectedText.y;
-      const dist = Math.sqrt(Math.pow(pos.x - handleX, 2) + Math.pow(pos.y - handleY, 2));
-      if (dist < 10) {
-        this.isResizing = true;
-        this.resizeElement = selectedText;
-        this.dragStart = { x: pos.x, y: pos.y };
-        return;
+      const { x, y, width, height } = selectedText;
+      const handles = {
+        'nw': { x: x, y: y - height/2 },
+        'n':  { x: x + width/2, y: y - height/2 },
+        'ne': { x: x + width, y: y - height/2 },
+        'e':  { x: x + width, y: y },
+        'se': { x: x + width, y: y + height/2 },
+        's':  { x: x + width/2, y: y + height/2 },
+        'sw': { x: x, y: y + height/2 },
+        'w':  { x: x, y: y }
+      };
+
+      for (const [key, hPos] of Object.entries(handles)) {
+        const dist = Math.sqrt(Math.pow(pos.x - hPos.x, 2) + Math.pow(pos.y - hPos.y, 2));
+        if (dist < 10) {
+          this.isResizing = true;
+          this.resizeElement = selectedText;
+          this.resizeHandle = key;
+          this.dragStart = { x: pos.x, y: pos.y };
+          return;
+        }
       }
     }
 
@@ -79,8 +92,17 @@ export class SelectTool {
     }
 
     if (this.isResizing) {
-      const newWidth = Math.max(50, pos.x - this.resizeElement.x);
-      this.resizeElement.maxWidth = newWidth;
+      const el = this.resizeElement;
+      if (this.resizeHandle.includes('e')) {
+        // Dragging right-side handles
+        el.maxWidth = Math.max(50, pos.x - el.x);
+      } else if (this.resizeHandle.includes('w')) {
+        // Dragging left-side handles (adjusts X and width)
+        const rightEdge = el.x + el.width;
+        const newX = Math.min(rightEdge - 50, pos.x);
+        el.maxWidth = rightEdge - newX;
+        el.x = newX;
+      }
       this.state.isDirty = true;
       return;
     }
