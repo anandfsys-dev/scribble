@@ -285,6 +285,10 @@ function setupExport(state) {
     Exporter.exportJson(state.elements);
   });
   
+  document.getElementById('btn-reset-view').addEventListener('click', () => {
+    state.resetView();
+  });
+  
   const importBtn = document.getElementById('btn-import-json');
   const importInput = document.getElementById('input-import-json');
   

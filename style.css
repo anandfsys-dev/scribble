@@ -61,3 +61,22 @@ canvas {
 .dark #sun-icon { display: block; }
 .dark #moon-icon { display: none; }
 
+/* Collapsed Panel Optimization */
+.properties-panel:not(:hover) .color-btn:not(.active),
+.properties-panel:not(:hover) .fill-btn:not(.active),
+.properties-panel:not(:hover) .width-btn:not(.active),
+.properties-panel:not(:hover) .text-color-btn:not(.active),
+.properties-panel:not(:hover) .font-size-btn:not(.active),
+.properties-panel:not(:hover) #draw-options {
+    display: none;
+}
+
+.properties-panel:not(:hover) .flex-col {
+    gap: 0.25rem;
+}
+
+.properties-panel:not(:hover) .flex-row, 
+.properties-panel:not(:hover) .flex-wrap {
+    justify-content: center;
+}
+

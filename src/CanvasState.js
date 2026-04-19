@@ -52,6 +52,12 @@ export class CanvasState {
     });
   }
 
+  resetView() {
+    this.scale = 1;
+    this.offset = { x: 0, y: 0 };
+    this.isDirty = true;
+  }
+
   saveHistory() {
     if (this.isUndoRedoing) return;
     
