@@ -25,16 +25,16 @@ export class TextTool {
     textarea.style.border = 'none';
     textarea.style.outline = 'none';
     textarea.style.fontFamily = "'Caveat', cursive";
-    textarea.style.fontSize = `${this.state.currentStyle.strokeWidth * 24 * this.state.zoom}px`;
-    textarea.style.color = this.state.currentStyle.strokeColor;
+    textarea.style.fontSize = `${(this.state.currentStyle.fontSize || 24) * this.state.zoom}px`;
+    textarea.style.color = this.state.currentStyle.textColor || this.state.currentStyle.strokeColor;
     textarea.style.lineHeight = '1.2';
     textarea.style.padding = '0';
     textarea.style.margin = '0';
     textarea.style.resize = 'none';
     textarea.style.overflow = 'hidden';
     textarea.style.zIndex = '100';
-    textarea.style.textAlign = 'center';
-    textarea.style.transform = 'translate(-50%, -50%)';
+    textarea.style.textAlign = 'left';
+    textarea.style.transform = 'translate(0, -50%)';
 
     document.getElementById('app').appendChild(textarea);
     
@@ -97,16 +97,16 @@ export class TextTool {
     textarea.style.border = 'none';
     textarea.style.outline = 'none';
     textarea.style.fontFamily = "'Caveat', cursive";
-    textarea.style.fontSize = `${this.state.currentStyle.strokeWidth * 24 * this.state.zoom}px`;
-    textarea.style.color = this.state.currentStyle.strokeColor;
+    textarea.style.fontSize = `${(element.style.fontSize || 24) * this.state.zoom}px`;
+    textarea.style.color = element.style.textColor || element.style.strokeColor;
     textarea.style.lineHeight = '1.2';
     textarea.style.padding = '0';
     textarea.style.margin = '0';
     textarea.style.resize = 'none';
     textarea.style.overflow = 'hidden';
     textarea.style.zIndex = '100';
-    textarea.style.textAlign = 'center';
-    textarea.style.transform = 'translate(-50%, -50%)';
+    textarea.style.textAlign = 'left';
+    textarea.style.transform = 'translate(0, -50%)';
     textarea.value = element.text;
 
     document.getElementById('app').appendChild(textarea);
