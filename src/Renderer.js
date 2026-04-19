@@ -105,11 +105,11 @@ export class Renderer {
         this.ctx.textAlign = 'left'; 
         this.ctx.textBaseline = 'middle';
         
-        // handle multiline
-        const lines = element.text.split('\n');
+        // Use wrapText if maxWidth exists, otherwise just split by \n
+        const lines = this.wrapText(this.ctx, element.text, element.maxWidth, fontSize);
         const lineHeight = fontSize * 1.2;
         const totalHeight = lines.length * lineHeight;
-        const width = Math.max(...lines.map(l => this.ctx.measureText(l).width));
+        const width = element.maxWidth || Math.max(...lines.map(l => this.ctx.measureText(l).width));
         
         // Cache dimensions for hit testing
         element.width = width;
@@ -123,11 +123,47 @@ export class Renderer {
         
         if (isSelected) {
           this.drawBoundingBox(x, y - totalHeight/2, width, totalHeight);
+          // Draw a small resize handle for text on the right
+          this.ctx.fillStyle = '#6366f1';
+          this.ctx.beginPath();
+          this.ctx.arc(x + width, y, 4, 0, Math.PI * 2);
+          this.ctx.fill();
         }
         break;
     }
 
     this.ctx.restore();
+  }
+
+  wrapText(ctx, text, maxWidth, fontSize) {
+    if (!maxWidth) return text.split('\n');
+    
+    const lines = [];
+    const paragraphs = text.split('\n');
+    
+    paragraphs.forEach(paragraph => {
+      if (!paragraph) {
+        lines.push('');
+        return;
+      }
+      
+      const words = paragraph.split(' ');
+      let currentLine = '';
+      
+      words.forEach(word => {
+        const testLine = currentLine ? currentLine + ' ' + word : word;
+        const metrics = ctx.measureText(testLine);
+        if (metrics.width > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      });
+      lines.push(currentLine);
+    });
+    
+    return lines;
   }
 
   drawArrowHead(x1, y1, x2, y2, roughOptions) {

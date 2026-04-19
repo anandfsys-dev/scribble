@@ -4,6 +4,8 @@ export class SelectTool {
     this.type = 'select';
     this.isDragging = false;
     this.isSelecting = false;
+    this.isResizing = false;
+    this.resizeElement = null;
     this.dragStart = null;
     this.selectionStart = null;
     this.selectionEnd = null;
@@ -15,6 +17,20 @@ export class SelectTool {
   }
   
   onPointerDown(pos, e) {
+    // Check if we clicked a resize handle of a selected text element
+    const selectedText = this.state.selection.find(el => el.type === 'text');
+    if (selectedText) {
+      const handleX = selectedText.x + (selectedText.width || 0);
+      const handleY = selectedText.y;
+      const dist = Math.sqrt(Math.pow(pos.x - handleX, 2) + Math.pow(pos.y - handleY, 2));
+      if (dist < 10) {
+        this.isResizing = true;
+        this.resizeElement = selectedText;
+        this.dragStart = { x: pos.x, y: pos.y };
+        return;
+      }
+    }
+
     const clickedElement = this.state.getElementAt(pos);
     
     if (clickedElement) {
@@ -58,6 +74,13 @@ export class SelectTool {
     if (this.isSelecting) {
       this.selectionEnd = { x: pos.x, y: pos.y };
       this.state.selectionBox = { start: this.selectionStart, end: this.selectionEnd };
+      this.state.isDirty = true;
+      return;
+    }
+
+    if (this.isResizing) {
+      const newWidth = Math.max(50, pos.x - this.resizeElement.x);
+      this.resizeElement.maxWidth = newWidth;
       this.state.isDirty = true;
       return;
     }
@@ -180,6 +203,14 @@ export class SelectTool {
       }
       
       this.state.isDirty = true;
+      return;
+    }
+
+    if (this.isResizing) {
+      this.isResizing = false;
+      this.resizeElement = null;
+      this.state.saveHistory();
+      this.state.saveToLocalStorage();
       return;
     }
 
