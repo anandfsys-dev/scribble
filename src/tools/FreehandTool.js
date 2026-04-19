@@ -3,10 +3,15 @@ export class FreehandTool {
     this.state = state;
     this.isDrawing = false;
     this.currentElement = null;
+    this.holdTimer = null;
+    this.hasSnapped = false;
+    this.lastPos = null;
   }
   
   onPointerDown(pos, e) {
     this.isDrawing = true;
+    this.hasSnapped = false;
+    this.lastPos = pos;
     
     this.currentElement = {
       id: Date.now().toString(),
@@ -17,34 +22,40 @@ export class FreehandTool {
     
     this.state.elements.push(this.currentElement);
     this.state.isDirty = true;
+    
+    this.startHoldTimer();
   }
   
   onPointerMove(pos, e) {
-    if (!this.isDrawing || !this.currentElement) return;
+    if (!this.isDrawing || !this.currentElement || this.hasSnapped) return;
     
     const lastPoint = this.currentElement.points[this.currentElement.points.length - 1];
     const dx = pos.x - lastPoint[0];
     const dy = pos.y - lastPoint[1];
     const dist = Math.sqrt(dx * dx + dy * dy);
     
-    // Minimum distance threshold to reduce jitter and excessive points
-    if (dist > 5) {
-      // Linear interpolation (lerp) for smoothing
-      // This creates a "follow" effect that rounds out sharp jitters
+    // Only add points if moved significantly to reduce noise
+    if (dist > 3) {
       const smoothing = 0.6;
       const nextX = lastPoint[0] + dx * smoothing;
       const nextY = lastPoint[1] + dy * smoothing;
       
       this.currentElement.points.push([nextX, nextY]);
       this.state.isDirty = true;
+      
+      // Reset timer if we moved significantly
+      if (dist > 10) {
+        this.startHoldTimer();
+      }
     }
   }
   
   onPointerUp(pos, e) {
+    this.clearHoldTimer();
     this.isDrawing = false;
     
     if (this.currentElement) {
-      if (this.currentElement.points.length < 2) {
+      if (this.currentElement.points && this.currentElement.points.length < 2) {
         this.state.removeElement(this.currentElement);
       } else {
         this.state.saveHistory();
@@ -53,5 +64,66 @@ export class FreehandTool {
     }
     
     this.currentElement = null;
+  }
+
+  startHoldTimer() {
+    this.clearHoldTimer();
+    // 600ms hold triggers shape recognition
+    this.holdTimer = setTimeout(() => this.trySnapShape(), 600);
+  }
+
+  clearHoldTimer() {
+    if (this.holdTimer) clearTimeout(this.holdTimer);
+  }
+
+  trySnapShape() {
+    if (!this.isDrawing || !this.currentElement || this.hasSnapped) return;
+    if (this.currentElement.points.length < 10) return;
+
+    const points = this.currentElement.points;
+    const start = points[0];
+    const end = points[points.length - 1];
+    const dx = end[0] - start[0];
+    const dy = end[1] - start[1];
+    const distStartEnd = Math.sqrt(dx * dx + dy * dy);
+
+    // Calculate bounding box
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    points.forEach(p => {
+        minX = Math.min(minX, p[0]);
+        minY = Math.min(minY, p[1]);
+        maxX = Math.max(maxX, p[0]);
+        maxY = Math.max(maxY, p[1]);
+    });
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    // Logic to distinguish between Line and Ellipse
+    // If endpoints are close relative to overall size, it's a closed shape (Ellipse)
+    const isClosed = distStartEnd < Math.max(width, height) * 0.4 || distStartEnd < 50;
+
+    if (isClosed) {
+        // Snap to Ellipse
+        this.currentElement.type = 'ellipse';
+        this.currentElement.x = minX;
+        this.currentElement.y = minY;
+        this.currentElement.width = width;
+        this.currentElement.height = height;
+        delete this.currentElement.points;
+    } else {
+        // Snap to Straight Line
+        this.currentElement.type = 'line';
+        this.currentElement.x = start[0];
+        this.currentElement.y = start[1];
+        this.currentElement.x2 = end[0];
+        this.currentElement.y2 = end[1];
+        delete this.currentElement.points;
+    }
+
+    this.hasSnapped = true;
+    this.state.isDirty = true;
+    
+    // Play a subtle haptic-like visual feedback or just refresh
+    this.state.isDirty = true;
   }
 }

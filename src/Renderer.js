@@ -10,13 +10,13 @@ export class Renderer {
     const { type, x, y, style } = element;
     
     // Convert our internal style to roughjs options
-    const isSmooth = style.smoothMode;
     const roughOptions = {
       stroke: style.strokeColor,
       strokeWidth: style.strokeWidth,
       fill: style.fillColor === 'transparent' ? undefined : style.fillColor,
       fillStyle: 'hachure',
-      roughness: type === 'freehand' ? (isSmooth ? 0 : 0.8) : 1.5,
+      // Default to 0 roughness for freehand (Smooth Mode)
+      roughness: type === 'freehand' ? 0 : 1.5,
       bowing: type === 'freehand' ? 0 : 1
     };
 
