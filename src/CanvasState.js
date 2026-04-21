@@ -204,15 +204,13 @@ export class CanvasState {
                pos.y >= minY - padding && pos.y <= maxY + padding;
       }
       case 'text': {
-        const w = element.width !== undefined ? element.width : 0;
-        const h = element.height !== undefined ? element.height : 0;
-        const minX = element.x - w/2;
-        const maxX = element.x + w/2;
-        const minY = element.y - h/2;
-        const maxY = element.y + h/2;
-        
-        return pos.x >= minX - padding && pos.x <= maxX + padding &&
-               pos.y >= minY - padding && pos.y <= maxY + padding;
+        // element.x is the LEFT edge; element.y is the vertical CENTER
+        const w = element.width  || 20;
+        const h = element.height || 20;
+        return pos.x >= element.x - padding &&
+               pos.x <= element.x + w + padding &&
+               pos.y >= element.y - h/2 - padding &&
+               pos.y <= element.y + h/2 + padding;
       }
       case 'line':
       case 'arrow': {
@@ -256,10 +254,11 @@ export class CanvasState {
         break;
       }
       case 'text': {
-        const w = element.width !== undefined ? element.width : 0;
-        const h = element.height !== undefined ? element.height : 0;
-        minX = element.x - w/2;
-        maxX = element.x + w/2;
+        // element.x is left edge; element.y is vertical center
+        const w = element.width  || 20;
+        const h = element.height || 20;
+        minX = element.x;
+        maxX = element.x + w;
         minY = element.y - h/2;
         maxY = element.y + h/2;
         break;
@@ -320,14 +319,14 @@ export class CanvasState {
         center: { x: el.x + w / 2, y: el.y + h / 2 }
       };
     } else if (el.type === 'text') {
-      const w = 100; // approx
-      const h = 50;
+      const w = el.width  || 100;
+      const h = el.height || 50;
       return {
-        top: { x: el.x, y: el.y - h/2 },
-        bottom: { x: el.x, y: el.y + h/2 },
-        left: { x: el.x - w/2, y: el.y },
-        right: { x: el.x + w/2, y: el.y },
-        center: { x: el.x, y: el.y }
+        top:    { x: el.x + w/2, y: el.y - h/2 },
+        bottom: { x: el.x + w/2, y: el.y + h/2 },
+        left:   { x: el.x,       y: el.y },
+        right:  { x: el.x + w,   y: el.y },
+        center: { x: el.x + w/2, y: el.y }
       };
     }
     return null;

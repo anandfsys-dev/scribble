@@ -42,21 +42,27 @@ export class Renderer {
       case 'arrow': {
         // Orthogonal curve routing
         let cx1, cy1, cx2, cy2;
-        
+
         let startHorizontal = true;
         if (element.startBinding && (element.startBinding.key === 'top' || element.startBinding.key === 'bottom')) {
-           startHorizontal = false;
+          startHorizontal = false;
         }
-        
+
         let endHorizontal = !startHorizontal;
         if (element.endBinding) {
-           if (element.endBinding.key === 'top' || element.endBinding.key === 'bottom') {
-               endHorizontal = false;
-           } else if (element.endBinding.key === 'left' || element.endBinding.key === 'right') {
-               endHorizontal = true;
-           }
+          if (element.endBinding.key === 'top' || element.endBinding.key === 'bottom') {
+            endHorizontal = false;
+          } else if (element.endBinding.key === 'left' || element.endBinding.key === 'right') {
+            endHorizontal = true;
+          }
+        } else if (!element.startBinding) {
+          // No bindings: snap both ends to dominant direction for a consistent arrowhead
+          const dx = Math.abs(element.x2 - x);
+          const dy = Math.abs(element.y2 - y);
+          startHorizontal = dx >= dy;
+          endHorizontal = startHorizontal;
         }
-        
+
         if (startHorizontal) {
           cx1 = (x + element.x2) / 2;
           cy1 = y;
@@ -64,7 +70,7 @@ export class Renderer {
           cx1 = x;
           cy1 = (y + element.y2) / 2;
         }
-        
+
         if (endHorizontal) {
           cx2 = (x + element.x2) / 2;
           cy2 = element.y2;
@@ -72,19 +78,34 @@ export class Renderer {
           cx2 = element.x2;
           cy2 = (y + element.y2) / 2;
         }
-        
+
         const pathData = `M ${x} ${y} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${element.x2} ${element.y2}`;
         this.rc.path(pathData, roughOptions);
-        
-        const tx = element.x2 - cx2;
-        const ty = element.y2 - cy2;
-        
-        if (Math.abs(tx) < 0.1 && Math.abs(ty) < 0.1) {
-            this.drawArrowHead(x, y, element.x2, element.y2, roughOptions);
+
+        // Draw arrowhead aligned to the entry side
+        const headLen = 20;
+        let hx1, hy1;
+        if (element.endBinding) {
+          switch (element.endBinding.key) {
+            case 'left':   hx1 = element.x2 - headLen; hy1 = element.y2; break;
+            case 'right':  hx1 = element.x2 + headLen; hy1 = element.y2; break;
+            case 'top':    hx1 = element.x2; hy1 = element.y2 - headLen; break;
+            case 'bottom': hx1 = element.x2; hy1 = element.y2 + headLen; break;
+            default:
+              hx1 = endHorizontal ? element.x2 - (cx2 <= element.x2 ? 1 : -1) * headLen : element.x2;
+              hy1 = endHorizontal ? element.y2 : element.y2 - (cy2 <= element.y2 ? 1 : -1) * headLen;
+          }
+        } else if (endHorizontal) {
+          const sign = cx2 <= element.x2 ? 1 : -1;
+          hx1 = element.x2 - sign * headLen;
+          hy1 = element.y2;
         } else {
-            this.drawArrowHead(element.x2 - tx, element.y2 - ty, element.x2, element.y2, roughOptions);
+          const sign = cy2 <= element.y2 ? 1 : -1;
+          hx1 = element.x2;
+          hy1 = element.y2 - sign * headLen;
         }
-        
+        this.drawArrowHead(hx1, hy1, element.x2, element.y2, roughOptions);
+
         if (isSelected) this.drawBoundingBoxForLine(x, y, element.x2, element.y2);
         break;
       }
@@ -109,7 +130,8 @@ export class Renderer {
         const lines = this.wrapText(this.ctx, element.text, element.maxWidth, fontSize);
         const lineHeight = fontSize * 1.2;
         const totalHeight = lines.length * lineHeight;
-        const width = element.maxWidth || Math.max(...lines.map(l => this.ctx.measureText(l).width));
+        const measuredWidth = lines.length ? Math.max(...lines.map(l => this.ctx.measureText(l).width)) : 0;
+        const width = element.maxWidth || Math.max(measuredWidth, 1);
         
         // Cache dimensions for hit testing
         element.width = width;
@@ -124,21 +146,17 @@ export class Renderer {
         if (isSelected) {
           this.drawBoundingBox(x, y - totalHeight/2, width, totalHeight);
           
-          // Draw 8 resize handles
+          // Draw 4 mid-side resize handles only (N, E, S, W)
           const handlePositions = [
-            { x: x, y: y - totalHeight/2 }, // NW
             { x: x + width/2, y: y - totalHeight/2 }, // N
-            { x: x + width, y: y - totalHeight/2 }, // NE
-            { x: x + width, y: y }, // E
-            { x: x + width, y: y + totalHeight/2 }, // SE
+            { x: x + width,   y: y },                 // E
             { x: x + width/2, y: y + totalHeight/2 }, // S
-            { x: x, y: y + totalHeight/2 }, // SW
-            { x: x, y: y } // W
+            { x: x,           y: y }                  // W
           ];
 
-          this.ctx.fillStyle = '#6366f1';
+          this.ctx.fillStyle = '#b95530';
           this.ctx.strokeStyle = '#ffffff';
-          this.ctx.lineWidth = 1;
+          this.ctx.lineWidth = 1.5;
           
           handlePositions.forEach(pos => {
             this.ctx.beginPath();
@@ -199,7 +217,7 @@ export class Renderer {
   }
 
   drawBoundingBox(x, y, width, height) {
-    this.ctx.strokeStyle = '#4f46e5';
+    this.ctx.strokeStyle = '#b95530';
     this.ctx.lineWidth = 1;
     this.ctx.setLineDash([5, 5]);
     // Fix negative width/height

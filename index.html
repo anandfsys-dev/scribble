@@ -4,158 +4,199 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Scribble - Hand-drawn Board</title>
+    <title>Scribble — Hand-drawn Board</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400..700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 overflow-hidden">
-    <div id="app" class="relative w-full h-screen">
-      
-      <!-- Top Toolbar (Tools) -->
-      <div class="toolbar top-4 left-1/2 transform -translate-x-1/2 flex items-center gap-2 p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 pointer-events-auto transition-all">
-        <button id="tool-select" class="tool-btn active relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Select (1)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/><path d="m13 13 6 6"/></svg>
-          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">1</span>
+  <body>
+    <div id="app">
+
+      <!-- ── Top Toolbar ─────────────────────────────────────────── -->
+      <div class="toolbar">
+
+        <button id="tool-select" class="tool-btn active" title="Select (1)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 3 7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+            <path d="m13 13 6 6"/>
+          </svg>
+          <span class="tool-key">1</span>
         </button>
-        <button id="tool-rectangle" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Rectangle (2)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
-          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">2</span>
+
+        <div class="toolbar-sep"></div>
+
+        <button id="tool-rectangle" class="tool-btn" title="Rectangle (2)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="18" height="18" x="3" y="3" rx="2"/>
+          </svg>
+          <span class="tool-key">2</span>
         </button>
-        <button id="tool-ellipse" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Ellipse (3)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
-          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">3</span>
+
+        <button id="tool-ellipse" class="tool-btn" title="Ellipse (3)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+          </svg>
+          <span class="tool-key">3</span>
         </button>
-        <button id="tool-line" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Line (4)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg>
-          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">4</span>
+
+        <div class="toolbar-sep"></div>
+
+        <button id="tool-line" class="tool-btn" title="Line (4)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" x2="19" y1="12" y2="12"/>
+          </svg>
+          <span class="tool-key">4</span>
         </button>
-        <button id="tool-arrow" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Arrow (5)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19 7-7-7-7"/><path d="M19 12H5"/></svg>
-          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">5</span>
+
+        <button id="tool-arrow" class="tool-btn" title="Arrow (5)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 19 7-7-7-7"/>
+            <path d="M19 12H5"/>
+          </svg>
+          <span class="tool-key">5</span>
         </button>
-        <button id="tool-pen" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Draw (6)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">6</span>
+
+        <div class="toolbar-sep"></div>
+
+        <button id="tool-pen" class="tool-btn" title="Draw (6)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+          </svg>
+          <span class="tool-key">6</span>
         </button>
-        <button id="tool-text" class="tool-btn relative p-2 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-slate-700 dark:text-slate-300 transition-colors" title="Text (7)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
-          <span class="absolute bottom-[-2px] right-0.5 text-[9px] font-bold opacity-50">7</span>
+
+        <button id="tool-text" class="tool-btn" title="Text (7)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7V4h16v3"/>
+            <path d="M9 20h6"/>
+            <path d="M12 4v16"/>
+          </svg>
+          <span class="tool-key">7</span>
         </button>
+
       </div>
 
-      <!-- Left Panel (Properties) -->
-      <div class="properties-panel top-1/2 left-4 transform -translate-y-1/2 flex flex-col gap-4 p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 w-12 hover:w-48 transition-all overflow-hidden group">
+      <!-- ── Properties Panel ─────────────────────────────────────── -->
+      <div class="properties-panel">
+
         <!-- Stroke Color -->
-        <div class="flex flex-col gap-2">
-          <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Stroke Color</span>
-          <div id="stroke-palette" class="flex flex-wrap gap-2 w-40">
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color-index="0"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="1"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="2"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="3"></button>
-            <button class="color-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="4"></button>
-          </div>
-        </div>
-        
-        <!-- Fill Color -->
-        <div class="flex flex-col gap-2 mt-2">
-          <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Background Color</span>
-          <div id="fill-palette" class="flex flex-wrap gap-2 w-40">
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110 active" data-color-index="0"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="1"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="2"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="3"></button>
-            <button class="fill-btn w-6 h-6 rounded border border-slate-300 shadow-sm transition-transform hover:scale-110" data-color-index="4"></button>
+        <div class="panel-section">
+          <span class="panel-label">Stroke</span>
+          <div id="stroke-palette" class="swatch-row">
+            <button class="color-btn active" data-color-index="0"></button>
+            <button class="color-btn" data-color-index="1"></button>
+            <button class="color-btn" data-color-index="2"></button>
+            <button class="color-btn" data-color-index="3"></button>
+            <button class="color-btn" data-color-index="4"></button>
           </div>
         </div>
 
+        <div class="panel-sep"></div>
+
+        <!-- Fill Color -->
+        <div class="panel-section">
+          <span class="panel-label">Fill</span>
+          <div id="fill-palette" class="swatch-row">
+            <button class="fill-btn active" data-color-index="0"></button>
+            <button class="fill-btn" data-color-index="1"></button>
+            <button class="fill-btn" data-color-index="2"></button>
+            <button class="fill-btn" data-color-index="3"></button>
+            <button class="fill-btn" data-color-index="4"></button>
+          </div>
+        </div>
+
+        <div class="panel-sep"></div>
+
         <!-- Stroke Width -->
-        <div class="flex flex-col gap-2 mt-2">
-          <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Stroke Width</span>
-          <div class="flex gap-2 w-40">
-            <button class="width-btn w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center active" data-width="1">
-              <div class="w-4 h-[1px] bg-current"></div>
+        <div class="panel-section">
+          <span class="panel-label">Width</span>
+          <div class="width-row">
+            <button class="width-btn active" data-width="1">
+              <div style="width:16px;height:1px;background:currentColor;border-radius:1px;"></div>
             </button>
-            <button class="width-btn w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center" data-width="3">
-              <div class="w-4 h-[3px] bg-current"></div>
+            <button class="width-btn" data-width="3">
+              <div style="width:16px;height:3px;background:currentColor;border-radius:2px;"></div>
             </button>
-            <button class="width-btn w-8 h-8 rounded hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center justify-center" data-width="5">
-              <div class="w-4 h-[5px] bg-current"></div>
+            <button class="width-btn" data-width="5">
+              <div style="width:16px;height:5px;background:currentColor;border-radius:3px;"></div>
             </button>
           </div>
         </div>
 
         <!-- Text Styles -->
-        <div id="text-options" class="flex flex-col gap-2 mt-4 border-t border-slate-100 dark:border-slate-700 pt-4">
-          <span class="text-xs font-semibold text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Text Styles</span>
-          
-          <div class="flex gap-1 flex-wrap w-40">
-            <button class="text-color-btn w-6 h-6 rounded-full border border-slate-200 active" style="background-color: #1e1e1e" data-color="#1e1e1e" data-color-index="0"></button>
-            <button class="text-color-btn w-6 h-6 rounded-full border border-slate-200" style="background-color: #e03131" data-color="#e03131" data-color-index="1"></button>
-            <button class="text-color-btn w-6 h-6 rounded-full border border-slate-200" style="background-color: #2f9e44" data-color="#2f9e44" data-color-index="2"></button>
-            <button class="text-color-btn w-6 h-6 rounded-full border border-slate-200" style="background-color: #1971c2" data-color="#1971c2" data-color-index="3"></button>
-            <button class="text-color-btn w-6 h-6 rounded-full border border-slate-200" style="background-color: #f08c00" data-color="#f08c00" data-color-index="4"></button>
+        <div id="text-options" class="panel-section">
+          <div class="panel-sep"></div>
+          <span class="panel-label">Text Color</span>
+          <div class="swatch-row">
+            <button class="text-color-btn active" style="background-color:#1e1e1e" data-color="#1e1e1e" data-color-index="0"></button>
+            <button class="text-color-btn" style="background-color:#e03131" data-color="#e03131" data-color-index="1"></button>
+            <button class="text-color-btn" style="background-color:#2f9e44" data-color="#2f9e44" data-color-index="2"></button>
+            <button class="text-color-btn" style="background-color:#1971c2" data-color="#1971c2" data-color-index="3"></button>
+            <button class="text-color-btn" style="background-color:#f08c00" data-color="#f08c00" data-color-index="4"></button>
           </div>
-
-          <div class="flex gap-2 w-40">
-            <button class="font-size-btn px-2 h-8 text-xs rounded hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700" data-size="16">S</button>
-            <button class="font-size-btn px-2 h-8 text-sm rounded hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 active" data-size="24">M</button>
-            <button class="font-size-btn px-2 h-8 text-base rounded hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700" data-size="32">L</button>
-            <button class="font-size-btn px-2 h-8 text-lg rounded hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700" data-size="48">XL</button>
+          <span class="panel-label">Size</span>
+          <div style="display:flex;gap:4px;">
+            <button class="font-size-btn" data-size="16">S</button>
+            <button class="font-size-btn active" data-size="24">M</button>
+            <button class="font-size-btn" data-size="32">L</button>
+            <button class="font-size-btn" data-size="48">XL</button>
           </div>
         </div>
 
-        <div class="mt-auto pt-4 text-[10px] text-slate-400 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-          Hold end of stroke for Auto-Shape
-        </div>
+        <div class="panel-hint">Hold stroke end → Auto-Shape</div>
 
       </div>
 
-      <!-- Actions Panel (Export) -->
-      <div class="actions-panel top-4 right-4 flex gap-2">
-        <button id="btn-reset-view" class="px-3 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-sm font-bold text-indigo-600 dark:text-indigo-400 transition-colors" title="Reset View (100%)">
+      <!-- ── Actions Panel ────────────────────────────────────────── -->
+      <div class="actions-panel">
+
+        <button id="btn-reset-view" class="action-btn action-btn-view" title="Reset View (100%)">
           100%
         </button>
-        <button id="btn-theme" class="p-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-slate-700 dark:text-slate-300 transition-colors" title="Toggle Theme">
-          <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
-          <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+
+        <button id="btn-theme" class="action-btn action-btn-icon" title="Toggle Theme">
+          <svg id="sun-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2m-4.93-7.07-1.41 1.41M6.34 17.66l-1.41 1.41"/>
+          </svg>
+          <svg id="moon-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+          </svg>
         </button>
-        <button id="btn-clear" class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg shadow-sm hover:bg-red-100 dark:hover:bg-red-900/50 text-sm font-medium transition-colors" title="Clear Canvas">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+
+        <button id="btn-clear" class="action-btn action-btn-danger" title="Clear Canvas">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+            <line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>
+          </svg>
           Clear
         </button>
-        <button id="btn-export-json" class="flex items-center gap-2 px-3 py-2 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 text-sm font-medium transition-colors" title="Export JSON">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-          Export JSON
+
+        <button id="btn-export-json" class="action-btn" title="Export JSON">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+          Export
         </button>
-        <button id="btn-import-json" class="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 text-sm font-medium transition-colors" title="Import JSON">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
-          Import JSON
+
+        <button id="btn-import-json" class="action-btn action-btn-primary" title="Import JSON">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" x2="12" y1="3" y2="15"/>
+          </svg>
+          Import
         </button>
+
         <input type="file" id="input-import-json" accept=".json" class="hidden">
       </div>
 
-      <!-- Canvas -->
+      <!-- ── Canvas ────────────────────────────────────────────────── -->
       <canvas id="canvas"></canvas>
+
     </div>
-
-    <!-- Active Tool Styles for Buttons -->
-    <style>
-      .tool-btn.active {
-        background-color: #e0e7ff;
-        color: #4f46e5;
-      }
-      .dark .tool-btn.active {
-        background-color: rgba(79, 70, 229, 0.3);
-        color: #818cf8;
-      }
-      .color-btn.active, .fill-btn.active, .width-btn.active {
-        outline: 2px solid #4f46e5;
-        outline-offset: 2px;
-      }
-    </style>
-
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>

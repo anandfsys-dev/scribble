@@ -20,16 +20,17 @@ export class SelectTool {
     // Check if we clicked a resize handle of a selected text element
     const selectedText = this.state.selection.find(el => el.type === 'text');
     if (selectedText) {
-      const { x, y, width, height } = selectedText;
+      // Guard against undefined/NaN when renderer hasn't cached dimensions yet
+      const x = selectedText.x;
+      const y = selectedText.y;
+      const fontSize = selectedText.style?.fontSize || 24;
+      const width  = selectedText.width  || 80;
+      const height = selectedText.height || fontSize * 1.2;
       const handles = {
-        'nw': { x: x, y: y - height/2 },
-        'n':  { x: x + width/2, y: y - height/2 },
-        'ne': { x: x + width, y: y - height/2 },
-        'e':  { x: x + width, y: y },
-        'se': { x: x + width, y: y + height/2 },
-        's':  { x: x + width/2, y: y + height/2 },
-        'sw': { x: x, y: y + height/2 },
-        'w':  { x: x, y: y }
+        'n': { x: x + width/2, y: y - height/2 },
+        'e': { x: x + width,   y: y },
+        's': { x: x + width/2, y: y + height/2 },
+        'w': { x: x,           y: y }
       };
 
       for (const [key, hPos] of Object.entries(handles)) {
@@ -93,16 +94,21 @@ export class SelectTool {
 
     if (this.isResizing) {
       const el = this.resizeElement;
-      if (this.resizeHandle.includes('e')) {
-        // Dragging right-side handles
+      const handle = this.resizeHandle;
+      // Use maxWidth if set, otherwise fall back to cached rendered width
+      const currentWidth = el.maxWidth || el.width || 80;
+
+      if (handle.includes('e')) {
+        // Right-side handles (e, ne, se): shift right edge
         el.maxWidth = Math.max(50, pos.x - el.x);
-      } else if (this.resizeHandle.includes('w')) {
-        // Dragging left-side handles (adjusts X and width)
-        const rightEdge = el.x + el.width;
+      } else if (handle.includes('w')) {
+        // Left-side handles (w, nw, sw): shift left edge, keep right edge fixed
+        const rightEdge = el.x + currentWidth;
         const newX = Math.min(rightEdge - 50, pos.x);
-        el.maxWidth = rightEdge - newX;
+        el.maxWidth = Math.max(50, rightEdge - newX);
         el.x = newX;
       }
+      // n / s handles: text height is auto-determined by content — no-op
       this.state.isDirty = true;
       return;
     }
@@ -199,7 +205,7 @@ export class SelectTool {
     if (el.type === 'rectangle' || el.type === 'ellipse') {
       return { x: el.x + el.width / 2, y: el.y + el.height / 2 };
     } else if (el.type === 'text') {
-      return { x: el.x + 50, y: el.y + 25 }; // approx
+      return { x: el.x + (el.width || 100) / 2, y: el.y };
     }
     return { x: el.x, y: el.y };
   }
