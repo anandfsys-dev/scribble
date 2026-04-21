@@ -25,10 +25,39 @@ document.addEventListener('DOMContentLoaded', () => {
   
   let clipboard = [];
 
+  const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 64, 96];
+
   // Handle Keyboard Shortcuts
   window.addEventListener('keydown', (e) => {
     // Don't intercept if typing in an input
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+
+    // Font size step shortcuts
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === '>' || e.key === '<')) {
+      e.preventDefault();
+      const current = canvasState.currentStyle.fontSize || 24;
+      const idx = FONT_SIZES.indexOf(current);
+      let newIdx;
+      if (e.key === '>') {
+        newIdx = idx >= 0 ? Math.min(idx + 1, FONT_SIZES.length - 1) : FONT_SIZES.findIndex(s => s > current);
+        if (newIdx < 0) newIdx = FONT_SIZES.length - 1;
+      } else {
+        if (idx >= 0) {
+          newIdx = Math.max(0, idx - 1);
+        } else {
+          newIdx = 0;
+          for (let i = 0; i < FONT_SIZES.length; i++) {
+            if (FONT_SIZES[i] < current) newIdx = i;
+          }
+        }
+      }
+      const newSize = FONT_SIZES[newIdx];
+      canvasState.currentStyle.fontSize = newSize;
+      const sel = document.getElementById('font-size-select');
+      if (sel) sel.value = newSize;
+      canvasState.applyStyleToSelection('fontSize', newSize);
+      return;
+    }
 
     if ((e.ctrlKey || e.metaKey)) {
         const key = e.key.toLowerCase();
@@ -93,24 +122,28 @@ document.addEventListener('DOMContentLoaded', () => {
   canvasEl.addEventListener('dblclick', (e) => {
     const pos = canvasState.screenToCanvas(e.clientX, e.clientY);
     const hitElement = canvasState.getElementAt(pos);
-    
+
     if (hitElement) {
       if (hitElement.type === 'text') {
         toolManager.tools.text.editElement(hitElement);
-      } else {
-        // Find center
-        const center = toolManager.tools.select.getElementCenter ? 
-                       toolManager.tools.select.getElementCenter(hitElement) : 
-                       { x: hitElement.x + (hitElement.width||0)/2, y: hitElement.y + (hitElement.height||0)/2 };
-        
-        // Select text tool
+      } else if (hitElement.type === 'rectangle' || hitElement.type === 'ellipse') {
+        const center = {
+          x: hitElement.x + hitElement.width / 2,
+          y: hitElement.y + hitElement.height / 2
+        };
         document.getElementById('tool-text').click();
-        
-        // Trigger text tool at center
+        toolManager.activeTool.onPointerDown(center, e, {
+          centerAlign: true,
+          maxWidth: Math.abs(hitElement.width)
+        });
+      } else {
+        const center = toolManager.tools.select.getElementCenter
+          ? toolManager.tools.select.getElementCenter(hitElement)
+          : { x: hitElement.x + (hitElement.width||0)/2, y: hitElement.y + (hitElement.height||0)/2 };
+        document.getElementById('tool-text').click();
         toolManager.activeTool.onPointerDown(center, e);
       }
     } else if (toolManager.activeTool.type === 'text') {
-      // Double click empty space in text mode - start new text
       toolManager.activeTool.onPointerDown(pos, e);
     }
   });
@@ -183,13 +216,25 @@ function setupProperties(state) {
     });
   });
 
-  // Font Size
-  document.querySelectorAll('.font-size-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      document.querySelectorAll('.font-size-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.currentStyle.fontSize = parseInt(btn.dataset.size);
-      state.applyStyleToSelection('fontSize', parseInt(btn.dataset.size));
+  // Font Size dropdown
+  const fontSizeSelect = document.getElementById('font-size-select');
+  if (fontSizeSelect) {
+    fontSizeSelect.addEventListener('change', () => {
+      const size = parseInt(fontSizeSelect.value);
+      state.currentStyle.fontSize = size;
+      state.applyStyleToSelection('fontSize', size);
+    });
+  }
+
+  // Text style toggles (Bold / Underline / Strikethrough)
+  ['fontBold', 'fontUnderline', 'fontStrikethrough'].forEach(prop => {
+    const btn = document.querySelector(`.text-style-btn[data-style="${prop}"]`);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+      const newVal = !state.currentStyle[prop];
+      state.currentStyle[prop] = newVal;
+      btn.classList.toggle('active', newVal);
+      state.applyStyleToSelection(prop, newVal);
     });
   });
 }

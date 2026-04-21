@@ -31,7 +31,10 @@ export class CanvasState {
       fillColor: 'transparent',
       strokeWidth: 1,
       fontSize: 24,
-      textColor: '#1e1e1e'
+      textColor: '#1e1e1e',
+      fontBold: false,
+      fontUnderline: false,
+      fontStrikethrough: false
     };
     
     // Render loop state

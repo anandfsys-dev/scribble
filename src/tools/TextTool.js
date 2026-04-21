@@ -4,38 +4,40 @@ export class TextTool {
     this._activeTextarea = null;
   }
 
-  // ── Textarea factory ────────────────────────────────────────────
-  _makeTextarea(screenX, screenTopY, fontSizePx, color) {
+  _makeTextarea(screenX, screenTopY, fontSizePx, color, style = {}) {
     const ta = document.createElement('textarea');
-    ta.style.position  = 'absolute';
-    ta.style.zIndex    = '100';
-    ta.style.left      = `${screenX}px`;
-    ta.style.top       = `${screenTopY}px`;
-    ta.style.padding   = '0';
-    ta.style.margin    = '0';
-    ta.style.border    = 'none';
-    ta.style.outline   = 'none';
+    ta.style.position   = 'absolute';
+    ta.style.zIndex     = '100';
+    ta.style.left       = `${screenX}px`;
+    ta.style.top        = `${screenTopY}px`;
+    ta.style.padding    = '0';
+    ta.style.margin     = '0';
+    ta.style.border     = 'none';
+    ta.style.outline    = 'none';
     ta.style.background = 'transparent';
-    ta.style.resize    = 'none';
-    ta.style.overflow  = 'hidden';
+    ta.style.resize     = 'none';
+    ta.style.overflow   = 'hidden';
     ta.style.fontFamily = "'Caveat', cursive";
-    ta.style.fontSize  = `${fontSizePx}px`;
+    ta.style.fontSize   = `${fontSizePx}px`;
+    ta.style.fontWeight = style.fontBold ? '700' : '400';
     ta.style.lineHeight = '1.2';
-    ta.style.color     = color;
-    ta.style.textAlign = 'left';
-    // No transform — explicit top positioning avoids rounding mismatch
+    ta.style.color      = color;
+    ta.style.textAlign  = 'left';
+    const decs = [];
+    if (style.fontUnderline)    decs.push('underline');
+    if (style.fontStrikethrough) decs.push('line-through');
+    ta.style.textDecoration = decs.join(' ') || 'none';
     return ta;
   }
 
-  // Measure the longest line and resize the textarea to fit exactly
   _autoResize(ta) {
     const span = document.createElement('span');
     span.style.cssText =
       'position:absolute;visibility:hidden;white-space:pre;' +
       `font-family:${ta.style.fontFamily};` +
       `font-size:${ta.style.fontSize};` +
+      `font-weight:${ta.style.fontWeight || '400'};` +
       `line-height:${ta.style.lineHeight};`;
-    // Measure the widest line (for nowrap mode)
     const lines = ta.value.split('\n');
     let maxW = 0;
     for (const line of lines) {
@@ -44,34 +46,57 @@ export class TextTool {
       maxW = Math.max(maxW, span.offsetWidth);
       document.body.removeChild(span);
     }
-    ta.style.width  = (maxW + 6) + 'px'; // small buffer prevents internal clipping
+    ta.style.width  = (maxW + 6) + 'px';
     ta.style.height = 'auto';
     ta.style.height = ta.scrollHeight + 'px';
   }
 
-  // ── Create new text ─────────────────────────────────────────────
-  onPointerDown(pos, e) {
+  // opts: { centerAlign?: bool, maxWidth?: number (canvas units) }
+  onPointerDown(pos, e, opts = {}) {
     if (this._activeTextarea) return;
     const hit = this.state.getElementAt(pos, null, ['text']);
     if (hit) { this.editElement(hit); return; }
 
     const fontSize   = this.state.currentStyle.fontSize || 24;
-    const fsPx       = fontSize * this.state.zoom;          // screen px
+    const fsPx       = fontSize * this.state.zoom;
     const lineH      = fsPx * 1.2;
     const screenX    = pos.x * this.state.zoom + this.state.pan.x;
     const screenY    = pos.y * this.state.zoom + this.state.pan.y;
-    // Position textarea top so that first-line EM-middle sits exactly at screenY
     const screenTopY = screenY - lineH / 2;
 
     const color = this.state.currentStyle.textColor || this.state.currentStyle.strokeColor;
-    const ta = this._makeTextarea(screenX, screenTopY, fsPx, color);
-    ta.style.whiteSpace = 'nowrap';
-    ta.style.minWidth   = '4px';
+    const ta = this._makeTextarea(screenX, screenTopY, fsPx, color, this.state.currentStyle);
+
+    if (opts.centerAlign) {
+      ta.style.left      = `${screenX}px`;
+      ta.style.transform = 'translateX(-50%)';
+      ta.style.textAlign = 'center';
+      if (opts.maxWidth) {
+        ta.style.width      = `${opts.maxWidth * this.state.zoom}px`;
+        ta.style.whiteSpace = 'pre-wrap';
+        ta.style.wordBreak  = 'break-word';
+      } else {
+        ta.style.whiteSpace = 'nowrap';
+        ta.style.minWidth   = '4px';
+      }
+    } else {
+      ta.style.whiteSpace = 'nowrap';
+      ta.style.minWidth   = '4px';
+    }
 
     document.getElementById('app').appendChild(ta);
     this._activeTextarea = ta;
-    this._autoResize(ta);
-    ta.addEventListener('input', () => this._autoResize(ta));
+
+    const resize = () => {
+      if (opts.centerAlign && opts.maxWidth) {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+      } else {
+        this._autoResize(ta);
+      }
+    };
+    resize();
+    ta.addEventListener('input', resize);
     setTimeout(() => ta.focus(), 10);
 
     const commit = () => {
@@ -87,6 +112,10 @@ export class TextTool {
           y: pos.y,
           style: { ...this.state.currentStyle }
         };
+        if (opts.centerAlign) {
+          el.textAlign = 'center';
+          if (opts.maxWidth) el.maxWidth = opts.maxWidth;
+        }
         this.state.addElement(el);
         this.state.setSelection([el]);
       }
@@ -98,29 +127,36 @@ export class TextTool {
     ta.addEventListener('keydown', ev => {
       ev.stopPropagation();
       if (ev.key === 'Enter' && ev.shiftKey) { ev.preventDefault(); commit(); }
-      else if (ev.key === 'Escape')            { ta.value = ''; commit(); }
+      else if (ev.key === 'Escape')           { ta.value = ''; commit(); }
     });
   }
 
-  // ── Edit existing text ──────────────────────────────────────────
   editElement(element) {
     const fontSize  = element.style.fontSize || 24;
     const fsPx      = fontSize * this.state.zoom;
     const lineH     = fsPx * 1.2;
-
-    // element.y is the vertical center of the text block.
-    // Canvas top of text block = element.y - element.height/2.
-    // Fallback height = single-line height when renderer hasn't cached it yet.
     const cachedH   = element.height || lineH / this.state.zoom;
-    const screenX   = element.x * this.state.zoom + this.state.pan.x;
     const screenTopY = (element.y - cachedH / 2) * this.state.zoom + this.state.pan.y;
+    const screenX    = element.x * this.state.zoom + this.state.pan.x;
 
+    const isCentered = element.textAlign === 'center';
     const color = element.style.textColor || element.style.strokeColor;
-    const ta = this._makeTextarea(screenX, screenTopY, fsPx, color);
+    const ta = this._makeTextarea(screenX, screenTopY, fsPx, color, element.style);
     ta.value = element.text;
 
-    if (element.maxWidth) {
-      // Wrapping mode: fix width, allow height to grow
+    if (isCentered) {
+      ta.style.left      = `${screenX}px`;
+      ta.style.transform = 'translateX(-50%)';
+      ta.style.textAlign = 'center';
+      if (element.maxWidth) {
+        ta.style.width      = `${element.maxWidth * this.state.zoom}px`;
+        ta.style.whiteSpace = 'pre-wrap';
+        ta.style.wordBreak  = 'break-word';
+      } else {
+        ta.style.whiteSpace = 'nowrap';
+        ta.style.minWidth   = '4px';
+      }
+    } else if (element.maxWidth) {
       ta.style.width      = `${element.maxWidth * this.state.zoom}px`;
       ta.style.whiteSpace = 'pre-wrap';
       ta.style.wordBreak  = 'break-word';
@@ -142,10 +178,8 @@ export class TextTool {
     };
     resize();
     ta.addEventListener('input', resize);
-
     setTimeout(() => { ta.focus(); ta.select(); }, 10);
 
-    // Hide canvas text while textarea is active
     const original = element.text;
     element.text = '';
     this.state.isDirty = true;

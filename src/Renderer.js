@@ -150,54 +150,85 @@ export class Renderer {
         if (isSelected) this.drawBoundingBoxForPoints(element.points);
         break;
         
-      case 'text':
+      case 'text': {
         const fontSize = style.fontSize || 24;
         const textColor = style.textColor || style.strokeColor;
-        this.ctx.font = `${fontSize}px 'Caveat', cursive`; 
+        const isCentered = element.textAlign === 'center';
+
+        this.ctx.font = `${style.fontBold ? 'bold ' : ''}${fontSize}px 'Caveat', cursive`;
         this.ctx.fillStyle = textColor;
-        this.ctx.textAlign = 'left'; 
+        this.ctx.textAlign = isCentered ? 'center' : 'left';
         this.ctx.textBaseline = 'middle';
-        
-        // Use wrapText if maxWidth exists, otherwise just split by \n
+
         const lines = this.wrapText(this.ctx, element.text, element.maxWidth, fontSize);
         const lineHeight = fontSize * 1.2;
         const totalHeight = lines.length * lineHeight;
         const measuredWidth = lines.length ? Math.max(...lines.map(l => this.ctx.measureText(l).width)) : 0;
         const width = element.maxWidth || Math.max(measuredWidth, 1);
-        
-        // Cache dimensions for hit testing
+
         element.width = width;
         element.height = totalHeight;
-        
+
         const startY = y - totalHeight / 2 + lineHeight / 2;
-        
+
         lines.forEach((line, i) => {
-          this.ctx.fillText(line, x, startY + (i * lineHeight));
+          const lineY = startY + i * lineHeight;
+          this.ctx.fillText(line, x, lineY);
+
+          if (style.fontUnderline || style.fontStrikethrough) {
+            const lw = this.ctx.measureText(line).width;
+            const lx = isCentered ? x - lw / 2 : x;
+            this.ctx.save();
+            this.ctx.strokeStyle = textColor;
+            this.ctx.lineWidth = Math.max(1, fontSize / 20);
+            this.ctx.lineCap = 'round';
+            if (style.fontUnderline) {
+              const uy = lineY + fontSize * 0.42;
+              this.ctx.beginPath();
+              this.ctx.moveTo(lx, uy);
+              this.ctx.lineTo(lx + lw, uy);
+              this.ctx.stroke();
+            }
+            if (style.fontStrikethrough) {
+              this.ctx.beginPath();
+              this.ctx.moveTo(lx, lineY);
+              this.ctx.lineTo(lx + lw, lineY);
+              this.ctx.stroke();
+            }
+            this.ctx.restore();
+          }
         });
-        
+
+        const bboxX = isCentered ? x - width / 2 : x;
+
         if (isSelected) {
-          this.drawBoundingBox(x, y - totalHeight/2, width, totalHeight);
-          
-          // Draw 4 mid-side resize handles only (N, E, S, W)
-          const handlePositions = [
-            { x: x + width/2, y: y - totalHeight/2 }, // N
-            { x: x + width,   y: y },                 // E
-            { x: x + width/2, y: y + totalHeight/2 }, // S
-            { x: x,           y: y }                  // W
+          this.drawBoundingBox(bboxX, y - totalHeight / 2, width, totalHeight);
+
+          const handlePositions = isCentered ? [
+            { x: x,             y: y - totalHeight / 2 },
+            { x: x + width / 2, y: y },
+            { x: x,             y: y + totalHeight / 2 },
+            { x: x - width / 2, y: y }
+          ] : [
+            { x: x + width / 2, y: y - totalHeight / 2 },
+            { x: x + width,     y: y },
+            { x: x + width / 2, y: y + totalHeight / 2 },
+            { x: x,             y: y }
           ];
 
           this.ctx.fillStyle = '#b95530';
           this.ctx.strokeStyle = '#ffffff';
           this.ctx.lineWidth = 1.5;
-          
-          handlePositions.forEach(pos => {
+
+          handlePositions.forEach(hPos => {
             this.ctx.beginPath();
-            this.ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+            this.ctx.arc(hPos.x, hPos.y, 4, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.stroke();
           });
         }
         break;
+      }
     }
 
     this.ctx.restore();

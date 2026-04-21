@@ -20,17 +20,22 @@ export class SelectTool {
     // Check if we clicked a resize handle of a selected text element
     const selectedText = this.state.selection.find(el => el.type === 'text');
     if (selectedText) {
-      // Guard against undefined/NaN when renderer hasn't cached dimensions yet
       const x = selectedText.x;
       const y = selectedText.y;
       const fontSize = selectedText.style?.fontSize || 24;
       const width  = selectedText.width  || 80;
       const height = selectedText.height || fontSize * 1.2;
-      const handles = {
-        'n': { x: x + width/2, y: y - height/2 },
-        'e': { x: x + width,   y: y },
-        's': { x: x + width/2, y: y + height/2 },
-        'w': { x: x,           y: y }
+      const isCentered = selectedText.textAlign === 'center';
+      const handles = isCentered ? {
+        'n': { x: x,             y: y - height / 2 },
+        'e': { x: x + width / 2, y: y },
+        's': { x: x,             y: y + height / 2 },
+        'w': { x: x - width / 2, y: y }
+      } : {
+        'n': { x: x + width / 2, y: y - height / 2 },
+        'e': { x: x + width,     y: y },
+        's': { x: x + width / 2, y: y + height / 2 },
+        'w': { x: x,             y: y }
       };
 
       for (const [key, hPos] of Object.entries(handles)) {
@@ -95,20 +100,27 @@ export class SelectTool {
     if (this.isResizing) {
       const el = this.resizeElement;
       const handle = this.resizeHandle;
-      // Use maxWidth if set, otherwise fall back to cached rendered width
       const currentWidth = el.maxWidth || el.width || 80;
+      const isCentered = el.textAlign === 'center';
 
-      if (handle.includes('e')) {
-        // Right-side handles (e, ne, se): shift right edge
-        el.maxWidth = Math.max(50, pos.x - el.x);
-      } else if (handle.includes('w')) {
-        // Left-side handles (w, nw, sw): shift left edge, keep right edge fixed
-        const rightEdge = el.x + currentWidth;
-        const newX = Math.min(rightEdge - 50, pos.x);
-        el.maxWidth = Math.max(50, rightEdge - newX);
-        el.x = newX;
+      if (isCentered) {
+        // For centered text, resize symmetrically around the center x
+        if (handle === 'e') {
+          el.maxWidth = Math.max(50, (pos.x - el.x) * 2);
+        } else if (handle === 'w') {
+          el.maxWidth = Math.max(50, (el.x - pos.x) * 2);
+        }
+      } else {
+        if (handle.includes('e')) {
+          el.maxWidth = Math.max(50, pos.x - el.x);
+        } else if (handle.includes('w')) {
+          const rightEdge = el.x + currentWidth;
+          const newX = Math.min(rightEdge - 50, pos.x);
+          el.maxWidth = Math.max(50, rightEdge - newX);
+          el.x = newX;
+        }
       }
-      // n / s handles: text height is auto-determined by content — no-op
+      // n / s: text height is auto-determined by content — no-op
       this.state.isDirty = true;
       return;
     }
@@ -205,6 +217,7 @@ export class SelectTool {
     if (el.type === 'rectangle' || el.type === 'ellipse') {
       return { x: el.x + el.width / 2, y: el.y + el.height / 2 };
     } else if (el.type === 'text') {
+      if (el.textAlign === 'center') return { x: el.x, y: el.y };
       return { x: el.x + (el.width || 100) / 2, y: el.y };
     }
     return { x: el.x, y: el.y };

@@ -146,11 +146,25 @@
             <button class="text-color-btn" style="background-color:#f08c00" data-color="#f08c00" data-color-index="4"></button>
           </div>
           <span class="panel-label">Size</span>
+          <select id="font-size-select" class="font-size-select">
+            <option value="12">12</option>
+            <option value="14">14</option>
+            <option value="16">16</option>
+            <option value="18">18</option>
+            <option value="20">20</option>
+            <option value="24" selected>24</option>
+            <option value="28">28</option>
+            <option value="32">32</option>
+            <option value="36">36</option>
+            <option value="48">48</option>
+            <option value="64">64</option>
+            <option value="96">96</option>
+          </select>
+          <span class="panel-label">Style</span>
           <div style="display:flex;gap:4px;">
-            <button class="font-size-btn" data-size="16">S</button>
-            <button class="font-size-btn active" data-size="24">M</button>
-            <button class="font-size-btn" data-size="32">L</button>
-            <button class="font-size-btn" data-size="48">XL</button>
+            <button class="text-style-btn" id="btn-font-bold" data-style="fontBold" title="Bold"><strong>B</strong></button>
+            <button class="text-style-btn" id="btn-font-underline" data-style="fontUnderline" title="Underline"><u>U</u></button>
+            <button class="text-style-btn" id="btn-font-strikethrough" data-style="fontStrikethrough" title="Strikethrough"><s>S</s></button>
           </div>
         </div>
 

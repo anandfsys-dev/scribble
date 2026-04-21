@@ -290,27 +290,52 @@ canvas {
   color: var(--active-icon);
 }
 
-/* ── Font Size Buttons ──────────────────────────────────────────── */
-.font-size-btn {
-  padding: 0 8px;
+/* ── Font Size Select ───────────────────────────────────────────── */
+.font-size-select {
+  width: 100%;
   height: 29px;
   border-radius: 7px;
   font-family: 'Caveat', cursive;
   font-weight: 700;
   font-size: 14px;
   border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--ink-mid);
+  cursor: pointer;
+  padding: 0 4px;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.font-size-select:hover {
+  color: var(--ink);
+  border-color: var(--accent);
+}
+
+/* ── Text Style Buttons (B / U / S) ────────────────────────────── */
+.text-style-btn {
+  width: 34px;
+  height: 29px;
+  border-radius: 7px;
+  font-family: 'Caveat', cursive;
+  font-size: 15px;
+  font-weight: 700;
+  border: 1px solid var(--panel-border);
   background: none;
   color: var(--ink-mid);
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  padding: 0;
 }
 
-.font-size-btn:hover {
+.text-style-btn:hover {
   background: var(--hover-tint);
   color: var(--ink);
 }
 
-.font-size-btn.active {
+.text-style-btn.active {
   background: var(--active-tint);
   border-color: var(--active-stroke);
   color: var(--active-icon);
@@ -362,7 +387,7 @@ canvas {
 .properties-panel:not(:hover) .fill-btn:not(.active),
 .properties-panel:not(:hover) .width-btn:not(.active),
 .properties-panel:not(:hover) .text-color-btn:not(.active),
-.properties-panel:not(:hover) .font-size-btn:not(.active) {
+.properties-panel:not(:hover) .text-style-btn:not(.active) {
   display: none !important;
 }
 
@@ -383,7 +408,7 @@ canvas {
 
 /* Text-options smooth expand on hover */
 .properties-panel:hover #text-options {
-  max-height: 220px;
+  max-height: 300px;
   opacity: 1;
   transition: max-height 0.26s ease, opacity 0.18s ease 0.08s;
 }

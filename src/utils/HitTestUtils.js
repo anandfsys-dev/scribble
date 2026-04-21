@@ -26,8 +26,9 @@ export function hitTest(pos, element) {
     case 'text': {
       const w = element.width  || 20;
       const h = element.height || 20;
-      return pos.x >= element.x - PADDING &&
-             pos.x <= element.x + w + PADDING &&
+      const left = element.textAlign === 'center' ? element.x - w / 2 : element.x;
+      return pos.x >= left - PADDING &&
+             pos.x <= left + w + PADDING &&
              pos.y >= element.y - h / 2 - PADDING &&
              pos.y <= element.y + h / 2 + PADDING;
     }
@@ -65,7 +66,8 @@ export function getElementBounds(element) {
     }
     case 'text': {
       const w = element.width || 20, h = element.height || 20;
-      maxX = element.x + w;
+      const left = element.textAlign === 'center' ? element.x - w / 2 : element.x;
+      minX = left; maxX = left + w;
       minY = element.y - h / 2; maxY = element.y + h / 2;
       break;
     }
