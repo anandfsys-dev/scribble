@@ -1,4 +1,7 @@
 import { Renderer } from './Renderer.js';
+import { HistoryManager } from './HistoryManager.js';
+import { getElementAt, hitTest, getElementBounds, isPointDeepInsideElement } from './utils/HitTestUtils.js';
+import { getConnectionPoints, getClosestConnectionPoint } from './utils/ConnectionPointUtils.js';
 
 export class CanvasState {
   constructor(canvas) {
@@ -9,11 +12,9 @@ export class CanvasState {
     // Document state
     this.elements = [];
     this.selection = [];
-    
-    // History State
-    this.history = [];
-    this.historyIndex = -1;
-    this.isUndoRedoing = false;
+
+    // History
+    this.historyManager = new HistoryManager();
     
     // UI State
     this.hoveredElement = null;
@@ -59,44 +60,26 @@ export class CanvasState {
   }
 
   saveHistory() {
-    if (this.isUndoRedoing) return;
-    
-    // Truncate future history if we've undone and are now making a new change
-    if (this.historyIndex < this.history.length - 1) {
-      this.history = this.history.slice(0, this.historyIndex + 1);
-    }
-    
-    this.history.push(JSON.parse(JSON.stringify(this.elements)));
-    
-    // Limit history size to prevent memory leaks
-    if (this.history.length > 50) {
-      this.history.shift();
-    } else {
-      this.historyIndex++;
-    }
+    this.historyManager.save(this.elements);
   }
 
   undo() {
-    if (this.historyIndex > 0) {
-      this.historyIndex--;
-      this.isUndoRedoing = true;
-      this.elements = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
-      this.selection = []; // Clear selection on undo
+    const snapshot = this.historyManager.undo();
+    if (snapshot !== null) {
+      this.elements = snapshot;
+      this.selection = [];
       this.isDirty = true;
       this.saveToLocalStorage();
-      this.isUndoRedoing = false;
     }
   }
 
   redo() {
-    if (this.historyIndex < this.history.length - 1) {
-      this.historyIndex++;
-      this.isUndoRedoing = true;
-      this.elements = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+    const snapshot = this.historyManager.redo();
+    if (snapshot !== null) {
+      this.elements = snapshot;
       this.selection = [];
       this.isDirty = true;
       this.saveToLocalStorage();
-      this.isUndoRedoing = false;
     }
   }
 
@@ -105,17 +88,10 @@ export class CanvasState {
       const saved = localStorage.getItem('scribble_elements');
       if (saved) {
         this.elements = JSON.parse(saved);
-        // Initialize history with loaded state
-        this.history = [JSON.parse(saved)];
-        this.historyIndex = 0;
-      } else {
-        this.history = [[]];
-        this.historyIndex = 0;
+        this.historyManager.init(this.elements);
       }
     } catch (e) {
       console.error('Failed to load from local storage', e);
-      this.history = [[]];
-      this.historyIndex = 0;
     }
   }
 
@@ -177,125 +153,19 @@ export class CanvasState {
   }
 
   getElementAt(pos, ignoreId = null, types = null) {
-    for (let i = this.elements.length - 1; i >= 0; i--) {
-      if (this.elements[i].id === ignoreId) continue;
-      if (types && !types.includes(this.elements[i].type)) continue;
-      if (this.hitTest(pos, this.elements[i])) {
-        return this.elements[i];
-      }
-    }
-    return null;
+    return getElementAt(this.elements, pos, ignoreId, types);
   }
 
   hitTest(pos, element) {
-    const padding = 10;
-    
-    switch (element.type) {
-      case 'rectangle':
-      case 'ellipse': {
-        const w = element.width || 0;
-        const h = element.height || 0;
-        const minX = Math.min(element.x, element.x + w);
-        const maxX = Math.max(element.x, element.x + w);
-        const minY = Math.min(element.y, element.y + h);
-        const maxY = Math.max(element.y, element.y + h);
-        
-        return pos.x >= minX - padding && pos.x <= maxX + padding &&
-               pos.y >= minY - padding && pos.y <= maxY + padding;
-      }
-      case 'text': {
-        // element.x is the LEFT edge; element.y is the vertical CENTER
-        const w = element.width  || 20;
-        const h = element.height || 20;
-        return pos.x >= element.x - padding &&
-               pos.x <= element.x + w + padding &&
-               pos.y >= element.y - h/2 - padding &&
-               pos.y <= element.y + h/2 + padding;
-      }
-      case 'line':
-      case 'arrow': {
-        const minX = Math.min(element.x, element.x2);
-        const maxX = Math.max(element.x, element.x2);
-        const minY = Math.min(element.y, element.y2);
-        const maxY = Math.max(element.y, element.y2);
-        return pos.x >= minX - padding && pos.x <= maxX + padding &&
-               pos.y >= minY - padding && pos.y <= maxY + padding;
-      }
-      case 'freehand': {
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        element.points.forEach(p => {
-          if (p[0] < minX) minX = p[0];
-          if (p[1] < minY) minY = p[1];
-          if (p[0] > maxX) maxX = p[0];
-          if (p[1] > maxY) maxY = p[1];
-        });
-        return pos.x >= minX - padding && pos.x <= maxX + padding &&
-               pos.y >= minY - padding && pos.y <= maxY + padding;
-      }
-    }
-    return false;
+    return hitTest(pos, element);
   }
-  
+
   getElementBounds(element) {
-    let minX = element.x;
-    let maxX = element.x;
-    let minY = element.y;
-    let maxY = element.y;
-    
-    switch (element.type) {
-      case 'rectangle':
-      case 'ellipse': {
-        const w = element.width || 0;
-        const h = element.height || 0;
-        minX = Math.min(element.x, element.x + w);
-        maxX = Math.max(element.x, element.x + w);
-        minY = Math.min(element.y, element.y + h);
-        maxY = Math.max(element.y, element.y + h);
-        break;
-      }
-      case 'text': {
-        // element.x is left edge; element.y is vertical center
-        const w = element.width  || 20;
-        const h = element.height || 20;
-        minX = element.x;
-        maxX = element.x + w;
-        minY = element.y - h/2;
-        maxY = element.y + h/2;
-        break;
-      }
-      case 'line':
-      case 'arrow': {
-        minX = Math.min(element.x, element.x2);
-        maxX = Math.max(element.x, element.x2);
-        minY = Math.min(element.y, element.y2);
-        maxY = Math.max(element.y, element.y2);
-        break;
-      }
-      case 'freehand': {
-        minX = Infinity; minY = Infinity; maxX = -Infinity; maxY = -Infinity;
-        element.points.forEach(p => {
-          if (p[0] < minX) minX = p[0];
-          if (p[1] < minY) minY = p[1];
-          if (p[0] > maxX) maxX = p[0];
-          if (p[1] > maxY) maxY = p[1];
-        });
-        break;
-      }
-    }
-    return { minX, maxX, minY, maxY };
+    return getElementBounds(element);
   }
-  
+
   isPointDeepInsideElement(pos, element) {
-    const bounds = this.getElementBounds(element);
-    const innerPadding = 15; // User must be closer than 15px to the edge to trigger connection points
-    
-    // If shape is too small, there is no "deep inside"
-    if (bounds.maxX - bounds.minX <= innerPadding * 2 || bounds.maxY - bounds.minY <= innerPadding * 2) {
-      return false; 
-    }
-    
-    return pos.x >= bounds.minX + innerPadding && pos.x <= bounds.maxX - innerPadding &&
-           pos.y >= bounds.minY + innerPadding && pos.y <= bounds.maxY - innerPadding;
+    return isPointDeepInsideElement(pos, element);
   }
   
   // Render loop
@@ -308,61 +178,11 @@ export class CanvasState {
   }
 
   getConnectionPoints(el) {
-    if (el.type === 'rectangle' || el.type === 'ellipse') {
-      const w = el.width;
-      const h = el.height;
-      return {
-        top: { x: el.x + w / 2, y: el.y },
-        bottom: { x: el.x + w / 2, y: el.y + h },
-        left: { x: el.x, y: el.y + h / 2 },
-        right: { x: el.x + w, y: el.y + h / 2 },
-        center: { x: el.x + w / 2, y: el.y + h / 2 }
-      };
-    } else if (el.type === 'text') {
-      const w = el.width  || 100;
-      const h = el.height || 50;
-      return {
-        top:    { x: el.x + w/2, y: el.y - h/2 },
-        bottom: { x: el.x + w/2, y: el.y + h/2 },
-        left:   { x: el.x,       y: el.y },
-        right:  { x: el.x + w,   y: el.y },
-        center: { x: el.x + w/2, y: el.y }
-      };
-    }
-    return null;
+    return getConnectionPoints(el);
   }
 
   getClosestConnectionPoint(pos, el) {
-    const points = this.getConnectionPoints(el);
-    if (!points) return null;
-    
-    let closest = null;
-    let minDistance = Infinity;
-    
-    for (const [key, point] of Object.entries(points)) {
-      const dist = Math.hypot(pos.x - point.x, pos.y - point.y);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closest = { key, point };
-      }
-    }
-    
-    // Snapping logic. Let's exclude center unless distance is very small, 
-    // actually returning the edge points is better.
-    if (closest.key === 'center' && minDistance > 30) {
-        // Find second closest
-        minDistance = Infinity;
-        for (const [key, point] of Object.entries(points)) {
-            if (key === 'center') continue;
-            const dist = Math.hypot(pos.x - point.x, pos.y - point.y);
-            if (dist < minDistance) {
-                minDistance = dist;
-                closest = { key, point };
-            }
-        }
-    }
-
-    return closest;
+    return getClosestConnectionPoint(pos, el);
   }
   
   render() {
