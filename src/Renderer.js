@@ -61,6 +61,11 @@ export class Renderer {
           const dy = Math.abs(element.y2 - y);
           startHorizontal = dx >= dy;
           endHorizontal = startHorizontal;
+        } else {
+          // startBinding set, no endBinding: free end uses dominant direction
+          const dx = Math.abs(element.x2 - x);
+          const dy = Math.abs(element.y2 - y);
+          endHorizontal = dx >= dy;
         }
 
         if (startHorizontal) {
