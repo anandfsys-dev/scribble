@@ -2,6 +2,7 @@ import { SelectTool } from './SelectTool.js';
 import { DrawTool } from './DrawTool.js';
 import { FreehandTool } from './FreehandTool.js';
 import { TextTool } from './TextTool.js';
+import { FrameTool } from './FrameTool.js';
 
 export class ToolManager {
   constructor(state) {
@@ -15,7 +16,8 @@ export class ToolManager {
       line: new DrawTool(state, 'line'),
       arrow: new DrawTool(state, 'arrow'),
       pen: new FreehandTool(state),
-      text: new TextTool(state)
+      text: new TextTool(state),
+      frame: new FrameTool(state)
     };
     
     this.activeTool = this.tools.select;
@@ -36,6 +38,8 @@ export class ToolManager {
     const canvas = this.state.canvas;
     
     canvas.addEventListener('pointerdown', (e) => {
+      if (this.state.isPresenting) return;
+
       // Middle click or spacebar+click for panning (simple implementation: middle click)
       if (e.button === 1 || e.shiftKey) {
         this.isPanning = true;
@@ -137,11 +141,9 @@ export class ToolManager {
       e.preventDefault();
       
       if (e.ctrlKey || e.metaKey) {
-        // Zoom
-        const zoomFactor = 0.005;
-        const delta = -e.deltaY * zoomFactor;
+        // Zoom — multiplicative so each wheel tick is a proportional step
         const oldZoom = this.state.zoom;
-        const newZoom = Math.max(0.1, Math.min(this.state.zoom + delta, 5));
+        const newZoom = Math.max(0.1, Math.min(this.state.zoom * Math.pow(0.999, e.deltaY), 5));
         
         // Zoom towards mouse pointer
         const mouseX = e.clientX;

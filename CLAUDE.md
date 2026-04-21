@@ -17,6 +17,7 @@ src/CanvasState.js                — Core state: elements[], selection, pan/zoo
 src/Renderer.js                   — Drawing: RoughJS wrappers for each element type + arrowheads + bounding boxes
 src/HistoryManager.js             — Undo/redo stack: save(), undo(), redo() returning element snapshots
 src/ThemeManager.js               — PALETTES constant, updatePalette(), setupTheme() for dark/light mode
+src/PresentationEngine.js         — Viewport math, eased animation, keyboard/resize listeners for presentation mode
 src/Exporter.js                   — JSON export/import
 src/utils/GeometryUtils.js        — Pure math: calculatePathLength(), simplifyPath() (Ramer-Douglas-Peucker)
 src/utils/HitTestUtils.js         — Pure geometry: getElementAt(), hitTest(), getElementBounds(), isPointDeepInsideElement()
@@ -26,6 +27,7 @@ src/tools/SelectTool.js           — Selection, drag-move, resize (8 handles), 
 src/tools/DrawTool.js             — Rectangle, Ellipse, Line, Arrow tools
 src/tools/FreehandTool.js         — Pen/freehand drawing, auto-shape detection on hold
 src/tools/TextTool.js             — Text creation, editing, wrapping via resize handles
+src/tools/FrameTool.js            — Frame creation (drag-to-draw labeled bounding boxes for presentation)
 src/style.css                     — Tailwind imports + canvas/panel positioning overrides
 ```
 
@@ -39,14 +41,16 @@ src/style.css                     — Tailwind imports + canvas/panel positionin
 ## Element Schema
 ```js
 {
-  id, type,           // 'rectangle'|'ellipse'|'line'|'arrow'|'freehand'|'text'
+  id, type,           // 'rectangle'|'ellipse'|'line'|'arrow'|'freehand'|'text'|'frame'
   x, y,               // top-left (or start point for lines/arrows)
-  width, height,      // used by rect/ellipse/text
+  width, height,      // used by rect/ellipse/text/frame (can be negative if drawn right-to-left)
   x2, y2,             // end point for line/arrow
   points,             // [[x,y], ...] for freehand
   text, maxWidth,     // text elements
   startBinding, endBinding,  // arrows: { elementId, key: 'top'|'bottom'|'left'|'right' }
+  name, frameOrder,   // frame elements: display label and sort index for presentation order
   style: { strokeColor, strokeWidth, fillColor, textColor, fontSize }
+  // Note: frame elements have NO style property — use fixed visual appearance
 }
 ```
 
@@ -68,6 +72,13 @@ src/style.css                     — Tailwind imports + canvas/panel positionin
 - **Arrow endHorizontal logic** (`Renderer.js`): For arrows with `startBinding` but no `endBinding`, `endHorizontal` must be derived from the dominant axis (dx vs dy), not defaulted to `!startHorizontal` — the latter causes a 90° arrowhead mismatch on straight arrows exiting a shape.
 - **Text element y-coordinate** (`HitTestUtils.js`, `Renderer.js`): `element.y` is the vertical **center**, not the top edge. Every hit-test and render for text must subtract `height/2` to get the top.
 - **Utils are the source of truth** (`src/utils/`): `CanvasState` methods like `getElementAt`, `hitTest`, `getElementBounds`, `getConnectionPoints` are thin wrappers — fix bugs in the `utils/` files, not in `CanvasState.js`.
+- **Frame elements have no `style` property** (`ThemeManager.js`, `CanvasState.js`): Unlike every other element type, frames use a fixed visual style — any code that reads `el.style` (theme migration, `applyStyleToSelection`) must guard with `if (!el.style) return`.
+- **Frame render order** (`CanvasState.render()`): Frames are drawn in a separate first pass before all other elements so they always appear as a background layer — the single `elements.forEach` loop was split into two to achieve this without changing element array order.
+- **Frame width/height can be negative** (`Renderer.js`, `CanvasState.js`, `PresentationEngine.js`): A frame drawn right-to-left or bottom-to-top has negative `width`/`height`; all rendering, viewport math, and the dimming overlay must normalize with `Math.abs()` and compute the true top-left as `x + min(0, width)`.
+- **frameOrder uses max+1, not count** (`FrameTool.js`): New frames get `frameOrder = maxExistingOrder + 1` rather than `frameCount`, because using count would produce collisions after any frame is deleted.
+- **Presentation blocks undo/redo and canvas events** (`CanvasState.js`, `ToolManager.js`): While `isPresenting` is true, `undo()`/`redo()` return early and `ToolManager` ignores all pointer events — this prevents accidental edits while navigating slides.
+- **`_onElementsChanged` callback** (`CanvasState.js`): Set `state._onElementsChanged = fn` to get notified after every `saveToLocalStorage()` call — used by the Frames panel to re-render its list without polling.
+- **`state.getFrames()`** (`CanvasState.js`): Single source of truth for the sorted frame list — use this everywhere instead of inline `filter + sort` to stay consistent.
 
 ## Dev Commands
 ```bash

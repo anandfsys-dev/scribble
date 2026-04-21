@@ -36,7 +36,14 @@ export class CanvasState {
     
     // Render loop state
     this.isDirty = true;
-    
+
+    // Presentation state
+    this.isPresenting = false;
+    this.activeFrameIndex = null;
+
+    // Callback invoked after any element change (used to refresh Frames panel)
+    this._onElementsChanged = null;
+
     this.loadFromLocalStorage();
     this.requestRender();
     
@@ -64,6 +71,7 @@ export class CanvasState {
   }
 
   undo() {
+    if (this.isPresenting) return;
     const snapshot = this.historyManager.undo();
     if (snapshot !== null) {
       this.elements = snapshot;
@@ -74,6 +82,7 @@ export class CanvasState {
   }
 
   redo() {
+    if (this.isPresenting) return;
     const snapshot = this.historyManager.redo();
     if (snapshot !== null) {
       this.elements = snapshot;
@@ -101,6 +110,7 @@ export class CanvasState {
     } catch (e) {
       console.error('Failed to save to local storage', e);
     }
+    if (this._onElementsChanged) this._onElementsChanged();
   }
   
   addElement(element) {
@@ -135,8 +145,9 @@ export class CanvasState {
   
   applyStyleToSelection(property, value) {
     if (this.selection.length === 0) return;
-    
+
     this.selection.forEach(el => {
+      if (!el.style) return; // frame elements have no user-controlled style
       el.style[property] = value;
     });
     this.isDirty = true;
@@ -177,6 +188,12 @@ export class CanvasState {
     requestAnimationFrame(() => this.requestRender());
   }
 
+  getFrames() {
+    return this.elements
+      .filter(el => el.type === 'frame')
+      .sort((a, b) => a.frameOrder - b.frameOrder);
+  }
+
   getConnectionPoints(el) {
     return getConnectionPoints(el);
   }
@@ -188,15 +205,21 @@ export class CanvasState {
   render() {
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    
+
     // Apply transform
     this.ctx.save();
     this.ctx.translate(this.pan.x, this.pan.y);
     this.ctx.scale(this.zoom, this.zoom);
-    
-    // Draw all elements
+
+    // Draw frames first (background layer) — hidden during presentation to avoid distraction
+    if (!this.isPresenting) {
+      this.elements.forEach(el => {
+        if (el.type === 'frame') this.renderer.drawElement(el, this.selection.includes(el));
+      });
+    }
+    // Draw all non-frame elements
     this.elements.forEach(el => {
-      this.renderer.drawElement(el, this.selection.includes(el));
+      if (el.type !== 'frame') this.renderer.drawElement(el, this.selection.includes(el));
     });
     
     // Draw selection marquee

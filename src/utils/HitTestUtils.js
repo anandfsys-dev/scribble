@@ -13,6 +13,7 @@ export function getElementAt(elements, pos, excludeId = null, types = null) {
 // Returns true if pos falls within the hit area of element
 export function hitTest(pos, element) {
   switch (element.type) {
+    case 'frame':
     case 'rectangle':
     case 'ellipse': {
       const w = element.width || 0;
@@ -54,6 +55,7 @@ export function getElementBounds(element) {
   let minX = element.x, maxX = element.x, minY = element.y, maxY = element.y;
 
   switch (element.type) {
+    case 'frame':
     case 'rectangle':
     case 'ellipse': {
       const w = element.width || 0, h = element.height || 0;

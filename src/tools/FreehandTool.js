@@ -36,19 +36,17 @@ export class FreehandTool {
     const dy = pos.y - lastPoint[1];
     const dist = Math.sqrt(dx * dx + dy * dy);
     
+    // Reset hold timer on any movement — shape snap only fires when truly still
+    this.startHoldTimer();
+
     // Only add points if moved significantly to reduce noise
     if (dist > 3) {
       const smoothing = 0.6;
       const nextX = lastPoint[0] + dx * smoothing;
       const nextY = lastPoint[1] + dy * smoothing;
-      
+
       this.currentElement.points.push([nextX, nextY]);
       this.state.isDirty = true;
-      
-      // Reset timer if we moved significantly
-      if (dist > 10) {
-        this.startHoldTimer();
-      }
     }
   }
   
@@ -107,7 +105,7 @@ export class FreehandTool {
 
     // Logic to distinguish between Line and Ellipse
     // If endpoints are close relative to overall size, it's a closed shape (Ellipse)
-    const isClosed = distStartEnd < Math.max(width, height) * 0.4 || distStartEnd < 50;
+    const isClosed = distStartEnd < Math.max(width, height) * 0.4;
 
     if (isClosed) {
         // Snap to Ellipse

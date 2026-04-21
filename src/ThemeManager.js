@@ -51,6 +51,7 @@ export function updatePalette(state) {
 
   // Migrate all existing element colors
   state.elements.forEach(el => {
+    if (!el.style) return; // frame elements have no user-controlled style
     const s = oldPalette.stroke.indexOf(el.style.strokeColor);
     if (s !== -1) el.style.strokeColor = palette.stroke[s];
 

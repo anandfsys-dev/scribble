@@ -3,13 +3,15 @@ import { CanvasState } from './CanvasState.js';
 import { ToolManager } from './tools/ToolManager.js';
 import { Exporter } from './Exporter.js';
 import { setupTheme } from './ThemeManager.js';
+import { PresentationEngine } from './PresentationEngine.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const canvasEl = document.getElementById('canvas');
   
-  // Initialize State and Tools
+  // Initialize State, Tools, and Presentation Engine
   const canvasState = new CanvasState(canvasEl);
   const toolManager = new ToolManager(canvasState);
+  const presentationEngine = new PresentationEngine(canvasState);
   
   // Resize handler
   const resizeCanvas = () => {
@@ -69,7 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
-    // Number shortcuts
+    // Number + letter shortcuts for tools
     const toolMap = {
       '1': 'select',
       '2': 'rectangle',
@@ -77,10 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
       '4': 'line',
       '5': 'arrow',
       '6': 'pen',
-      '7': 'text'
+      '7': 'text',
+      'f': 'frame'
     };
-    if (toolMap[e.key]) {
-      const btn = document.getElementById(`tool-${toolMap[e.key]}`);
+    const key = e.key === 'f' ? 'f' : e.key;
+    if (toolMap[key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      const btn = document.getElementById(`tool-${toolMap[key]}`);
       if (btn) btn.click();
     }
   });
@@ -116,11 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
   setupProperties(canvasState);
   setupExport(canvasState);
   setupTheme(canvasState);
+  setupFramesPanel(canvasState, presentationEngine);
 });
 
 
 function setupToolbar(state, toolManager) {
-  const tools = ['select', 'rectangle', 'ellipse', 'line', 'arrow', 'pen', 'text'];
+  const tools = ['select', 'rectangle', 'ellipse', 'line', 'arrow', 'pen', 'text', 'frame'];
   
   tools.forEach(toolName => {
     const btn = document.getElementById(`tool-${toolName}`);
@@ -186,6 +191,136 @@ function setupProperties(state) {
       state.currentStyle.fontSize = parseInt(btn.dataset.size);
       state.applyStyleToSelection('fontSize', parseInt(btn.dataset.size));
     });
+  });
+}
+
+function setupFramesPanel(state, engine) {
+  function renderFramesList() {
+    const list = document.getElementById('frames-list');
+    const empty = document.getElementById('frames-empty');
+    const frames = state.getFrames();
+
+    const clearBtn = document.getElementById('btn-clear-frames');
+    if (frames.length === 0) {
+      list.innerHTML = '';
+      empty.style.display = 'block';
+      clearBtn.style.display = 'none';
+      return;
+    }
+
+    empty.style.display = 'none';
+    clearBtn.style.display = 'block';
+    list.innerHTML = '';
+
+    frames.forEach((frame, i) => {
+      const item = document.createElement('div');
+      item.className = 'frame-item';
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'frame-item-name';
+      nameSpan.textContent = frame.name;
+      nameSpan.title = 'Click to zoom • Double-click to rename';
+
+      nameSpan.addEventListener('click', () => {
+        engine.zoomToFrame(frame);
+      });
+
+      nameSpan.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = frame.name;
+        input.className = 'frame-item-input';
+        nameSpan.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const commit = () => {
+          const newName = input.value.trim() || frame.name;
+          frame.name = newName;
+          state.saveHistory();
+          state.saveToLocalStorage();
+        };
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', (ev) => {
+          if (ev.key === 'Enter') { commit(); input.blur(); }
+          if (ev.key === 'Escape') { input.value = frame.name; input.blur(); }
+          ev.stopPropagation();
+        });
+      });
+
+      const upBtn = document.createElement('button');
+      upBtn.textContent = '▲';
+      upBtn.className = 'frame-order-btn';
+      upBtn.disabled = i === 0;
+      upBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const prev = frames[i - 1];
+        [frame.frameOrder, prev.frameOrder] = [prev.frameOrder, frame.frameOrder];
+        state.saveHistory();
+        state.saveToLocalStorage();
+      });
+
+      const downBtn = document.createElement('button');
+      downBtn.textContent = '▼';
+      downBtn.className = 'frame-order-btn';
+      downBtn.disabled = i === frames.length - 1;
+      downBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const next = frames[i + 1];
+        [frame.frameOrder, next.frameOrder] = [next.frameOrder, frame.frameOrder];
+        state.saveHistory();
+        state.saveToLocalStorage();
+      });
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = '✕';
+      deleteBtn.className = 'frame-delete-btn';
+      deleteBtn.title = 'Delete frame';
+      deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.elements = state.elements.filter(el => el !== frame);
+        state.isDirty = true;
+        state.saveHistory();
+        state.saveToLocalStorage();
+      });
+
+      item.appendChild(nameSpan);
+      item.appendChild(upBtn);
+      item.appendChild(downBtn);
+      item.appendChild(deleteBtn);
+      list.appendChild(item);
+    });
+  }
+
+  // Sync list whenever elements change
+  state._onElementsChanged = renderFramesList;
+  renderFramesList();
+
+  // Present button
+  document.getElementById('btn-present').addEventListener('click', () => {
+    if (state.getFrames().length === 0) return;
+    engine.start(0);
+  });
+
+  // Clear all frames
+  document.getElementById('btn-clear-frames').addEventListener('click', () => {
+    if (state.getFrames().length === 0) return;
+    state.elements = state.elements.filter(el => el.type !== 'frame');
+    state.isDirty = true;
+    state.saveHistory();
+    state.saveToLocalStorage();
+  });
+
+  // Presentation overlay controls
+  document.getElementById('btn-exit-present').addEventListener('click', () => engine.exit());
+  document.getElementById('btn-prev-frame').addEventListener('click', () => engine.navigate(-1));
+  document.getElementById('btn-next-frame').addEventListener('click', () => engine.navigate(1));
+
+  // Click anywhere on overlay (not on a button) → advance to next frame
+  document.getElementById('presentation-overlay').addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;
+    engine.navigate(1);
   });
 }
 

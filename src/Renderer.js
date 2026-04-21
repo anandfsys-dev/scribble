@@ -8,23 +8,50 @@ export class Renderer {
 
   drawElement(element, isSelected = false) {
     const { type, x, y, style } = element;
-    
-    // Convert our internal style to roughjs options
+
+    this.ctx.save();
+
+    // Frame has no style object — render it separately before roughOptions is constructed
+    if (type === 'frame') {
+      const isDark = document.documentElement.classList.contains('dark');
+      const frameColor = isDark ? '#7eb5cc' : '#5b8fa8';
+      const normX = element.width >= 0 ? x : x + element.width;
+      const normY = element.height >= 0 ? y : y + element.height;
+      const normW = Math.abs(element.width);
+      const normH = Math.abs(element.height);
+
+      this.rc.rectangle(normX, normY, normW, normH, {
+        stroke: frameColor,
+        strokeWidth: 1.5,
+        fill: undefined,
+        roughness: 1,
+        strokeLineDash: [8, 4],
+      });
+
+      this.ctx.font = `700 13px 'Caveat', cursive`;
+      this.ctx.fillStyle = frameColor;
+      this.ctx.textAlign = 'left';
+      this.ctx.textBaseline = 'bottom';
+      this.ctx.fillText(element.name || 'Frame', normX + 4, normY - 4);
+
+      this.ctx.restore();
+      return;
+    }
+
+    // Convert our internal style to roughjs options (all non-frame elements)
     const roughOptions = {
       stroke: style.strokeColor,
       strokeWidth: style.strokeWidth,
       fill: style.fillColor === 'transparent' ? undefined : style.fillColor,
       fillStyle: 'hachure',
-      // Default to 0 roughness for freehand (Smooth Mode)
       roughness: type === 'freehand' ? 0 : 1.5,
       bowing: type === 'freehand' ? 0 : 1
     };
 
-    this.ctx.save();
-    
     switch (type) {
       case 'rectangle':
         this.rc.rectangle(x, y, element.width, element.height, roughOptions);
+
         if (isSelected) this.drawBoundingBox(x, y, element.width, element.height);
         break;
         

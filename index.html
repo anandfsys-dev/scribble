@@ -74,6 +74,17 @@
           <span class="tool-key">7</span>
         </button>
 
+        <div class="toolbar-sep"></div>
+
+        <button id="tool-frame" class="tool-btn" title="Frame (F)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/>
+            <line x1="8" y1="21" x2="16" y2="21"/>
+            <line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
+          <span class="tool-key">F</span>
+        </button>
+
       </div>
 
       <!-- ── Properties Panel ─────────────────────────────────────── -->
@@ -191,6 +202,36 @@
         </button>
 
         <input type="file" id="input-import-json" accept=".json" class="hidden">
+      </div>
+
+      <!-- ── Frames Panel ───────────────────────────────────────────── -->
+      <div id="frames-panel" class="frames-panel">
+        <div class="frames-panel-header">
+          <span class="frames-panel-title">Frames</span>
+          <button id="btn-present" class="btn-present" title="Start Presentation">
+            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+              <polygon points="5,3 19,12 5,21"/>
+            </svg>
+            Present
+          </button>
+        </div>
+        <div id="frames-list" class="frames-list"></div>
+        <p id="frames-empty" class="frames-empty">No frames yet.<br>Use Frame tool (F) to draw one.</p>
+        <button id="btn-clear-frames" class="btn-clear-frames" style="display:none">Clear all frames</button>
+      </div>
+
+      <!-- ── Presentation Blur Overlay ────────────────────────────────── -->
+      <div id="pres-dim-overlay" class="pres-dim-overlay" style="display:none"></div>
+
+      <!-- ── Presentation Overlay ───────────────────────────────────── -->
+      <div id="presentation-overlay" class="presentation-overlay hidden">
+        <div class="pres-top-bar">
+          <span id="pres-frame-name" class="pres-frame-name"></span>
+          <span id="pres-counter" class="pres-counter"></span>
+          <button id="btn-exit-present" class="pres-exit-btn">✕ Exit</button>
+        </div>
+        <button id="btn-prev-frame" class="pres-nav-btn pres-nav-prev" title="Previous (←)">‹</button>
+        <button id="btn-next-frame" class="pres-nav-btn pres-nav-next" title="Next (→)">›</button>
       </div>
 
       <!-- ── Canvas ────────────────────────────────────────────────── -->
