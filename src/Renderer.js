@@ -155,7 +155,7 @@ export class Renderer {
         const textColor = style.textColor || style.strokeColor;
         const isCentered = element.textAlign === 'center';
 
-        this.ctx.font = `${style.fontBold ? 'bold ' : ''}${fontSize}px 'Caveat', cursive`;
+        this.ctx.font = `${style.fontItalic ? 'italic ' : ''}${style.fontBold ? 'bold ' : ''}${fontSize}px 'Caveat', cursive`;
         this.ctx.fillStyle = textColor;
         this.ctx.textAlign = isCentered ? 'center' : 'left';
         this.ctx.textBaseline = 'middle';

@@ -33,6 +33,7 @@ export class CanvasState {
       fontSize: 24,
       textColor: '#1e1e1e',
       fontBold: false,
+      fontItalic: false,
       fontUnderline: false,
       fontStrikethrough: false
     };

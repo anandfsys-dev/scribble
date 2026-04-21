@@ -19,7 +19,8 @@ export class TextTool {
     ta.style.overflow   = 'hidden';
     ta.style.fontFamily = "'Caveat', cursive";
     ta.style.fontSize   = `${fontSizePx}px`;
-    ta.style.fontWeight = style.fontBold ? '700' : '400';
+    ta.style.fontWeight = style.fontBold  ? '700'    : '400';
+    ta.style.fontStyle  = style.fontItalic ? 'italic' : 'normal';
     ta.style.lineHeight = '1.2';
     ta.style.color      = color;
     ta.style.textAlign  = 'left';
@@ -37,6 +38,7 @@ export class TextTool {
       `font-family:${ta.style.fontFamily};` +
       `font-size:${ta.style.fontSize};` +
       `font-weight:${ta.style.fontWeight || '400'};` +
+      `font-style:${ta.style.fontStyle || 'normal'};` +
       `line-height:${ta.style.lineHeight};`;
     const lines = ta.value.split('\n');
     let maxW = 0;

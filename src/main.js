@@ -32,13 +32,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Don't intercept if typing in an input
     if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
 
-    // Font size step shortcuts
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === '>' || e.key === '<')) {
+    // Font size step: Ctrl+Shift+. (increase) / Ctrl+Shift+, (decrease)
+    // Use e.code (layout-independent) rather than e.key which varies by OS/browser when Ctrl is held
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.code === 'Period' || e.code === 'Comma')) {
       e.preventDefault();
       const current = canvasState.currentStyle.fontSize || 24;
       const idx = FONT_SIZES.indexOf(current);
+      const isIncrease = e.code === 'Period';
       let newIdx;
-      if (e.key === '>') {
+      if (isIncrease) {
         newIdx = idx >= 0 ? Math.min(idx + 1, FONT_SIZES.length - 1) : FONT_SIZES.findIndex(s => s > current);
         if (newIdx < 0) newIdx = FONT_SIZES.length - 1;
       } else {
@@ -46,17 +48,31 @@ document.addEventListener('DOMContentLoaded', () => {
           newIdx = Math.max(0, idx - 1);
         } else {
           newIdx = 0;
-          for (let i = 0; i < FONT_SIZES.length; i++) {
-            if (FONT_SIZES[i] < current) newIdx = i;
-          }
+          for (let i = 0; i < FONT_SIZES.length; i++) { if (FONT_SIZES[i] < current) newIdx = i; }
         }
       }
-      const newSize = FONT_SIZES[newIdx];
-      canvasState.currentStyle.fontSize = newSize;
-      const sel = document.getElementById('font-size-select');
-      if (sel) sel.value = newSize;
-      canvasState.applyStyleToSelection('fontSize', newSize);
+      applyFontSize(canvasState, FONT_SIZES[newIdx]);
       return;
+    }
+
+    // Text formatting shortcuts
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      // Ctrl+B → bold, Ctrl+I → italic, Ctrl+Shift+S → strikethrough
+      if (!e.shiftKey && e.code === 'KeyB') {
+        e.preventDefault();
+        toggleTextStyle(canvasState, 'fontBold', 'btn-font-bold');
+        return;
+      }
+      if (!e.shiftKey && e.code === 'KeyI') {
+        e.preventDefault();
+        toggleTextStyle(canvasState, 'fontItalic', 'btn-font-italic');
+        return;
+      }
+      if (e.shiftKey && e.code === 'KeyS') {
+        e.preventDefault();
+        toggleTextStyle(canvasState, 'fontStrikethrough', 'btn-font-strikethrough');
+        return;
+      }
     }
 
     if ((e.ctrlKey || e.metaKey)) {
@@ -157,6 +173,20 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
+function applyFontSize(state, size) {
+  state.currentStyle.fontSize = size;
+  const sel = document.getElementById('font-size-select');
+  if (sel) sel.value = size;
+  state.applyStyleToSelection('fontSize', size);
+}
+
+function toggleTextStyle(state, prop, btnId) {
+  const newVal = !state.currentStyle[prop];
+  state.currentStyle[prop] = newVal;
+  document.getElementById(btnId)?.classList.toggle('active', newVal);
+  state.applyStyleToSelection(prop, newVal);
+}
+
 function setupToolbar(state, toolManager) {
   const tools = ['select', 'rectangle', 'ellipse', 'line', 'arrow', 'pen', 'text', 'frame'];
   
@@ -217,20 +247,28 @@ function setupProperties(state) {
   });
 
   // Font Size dropdown
+  // Save selection on mousedown so the native dropdown can't cause it to be lost
   const fontSizeSelect = document.getElementById('font-size-select');
   if (fontSizeSelect) {
+    let _savedSel = [];
+    fontSizeSelect.addEventListener('mousedown', () => { _savedSel = [...state.selection]; });
     fontSizeSelect.addEventListener('change', () => {
       const size = parseInt(fontSizeSelect.value);
       state.currentStyle.fontSize = size;
-      state.applyStyleToSelection('fontSize', size);
+      // If selection was somehow cleared during dropdown interaction, restore it
+      if (state.selection.length === 0 && _savedSel.length > 0) state.selection = _savedSel;
+      applyFontSize(state, size);
     });
   }
 
-  // Text style toggles (Bold / Underline / Strikethrough)
-  ['fontBold', 'fontUnderline', 'fontStrikethrough'].forEach(prop => {
+  // Text style toggles (Bold / Italic / Underline / Strikethrough)
+  ['fontBold', 'fontItalic', 'fontUnderline', 'fontStrikethrough'].forEach(prop => {
     const btn = document.querySelector(`.text-style-btn[data-style="${prop}"]`);
     if (!btn) return;
+    let _savedSel = [];
+    btn.addEventListener('mousedown', () => { _savedSel = [...state.selection]; });
     btn.addEventListener('click', () => {
+      if (state.selection.length === 0 && _savedSel.length > 0) state.selection = _savedSel;
       const newVal = !state.currentStyle[prop];
       state.currentStyle[prop] = newVal;
       btn.classList.toggle('active', newVal);
