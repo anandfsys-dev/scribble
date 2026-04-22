@@ -2,6 +2,8 @@ export class TextTool {
   constructor(state) {
     this.state = state;
     this._activeTextarea = null;
+    this._suppressBlurCommit = false; // set true while link dialog is open
+    this._onLinkRequest = null;       // (element, selStart, selEnd, textarea) → set by main.js
   }
 
   _makeTextarea(screenX, screenTopY, fontSizePx, color, style = {}) {
@@ -125,7 +127,10 @@ export class TextTool {
       document.getElementById('tool-select')?.click();
     };
 
-    ta.addEventListener('blur', commit);
+    ta.addEventListener('blur', () => {
+      if (this._suppressBlurCommit) return;
+      commit();
+    });
     ta.addEventListener('keydown', ev => {
       ev.stopPropagation();
       if (ev.key === 'Enter' && ev.shiftKey) { ev.preventDefault(); commit(); }
@@ -202,7 +207,10 @@ export class TextTool {
       document.getElementById('tool-select')?.click();
     };
 
-    ta.addEventListener('blur', commit);
+    ta.addEventListener('blur', () => {
+      if (this._suppressBlurCommit) return;
+      commit();
+    });
     ta.addEventListener('keydown', ev => {
       ev.stopPropagation();
       if (ev.key === 'Enter' && ev.shiftKey) { ev.preventDefault(); commit(); }
@@ -212,6 +220,13 @@ export class TextTool {
         element.text = original;
         ta.remove();
         this.state.isDirty = true;
+      } else if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'k') {
+        ev.preventDefault();
+        if (this._onLinkRequest) {
+          const s = ta.selectionStart, e = ta.selectionEnd;
+          // Use full text range when nothing is selected
+          this._onLinkRequest(element, s === e ? 0 : s, s === e ? ta.value.length : e, ta);
+        }
       }
     });
   }

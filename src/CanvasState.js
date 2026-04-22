@@ -45,6 +45,12 @@ export class CanvasState {
     this.isPresenting = false;
     this.activeFrameIndex = null;
 
+    // Alignment guides (set by SelectTool during drag, cleared on release)
+    this.alignGuides = [];
+
+    // Called each rAF tick — used by main.js to update DOM overlays (link tooltip, etc.)
+    this._onAfterRender = null;
+
     // Callback invoked after any element change (used to refresh Frames panel)
     this._onElementsChanged = null;
 
@@ -100,12 +106,23 @@ export class CanvasState {
     try {
       const saved = localStorage.getItem('scribble_elements');
       if (saved) {
-        this.elements = JSON.parse(saved);
+        this.elements = CanvasState._migrateElements(JSON.parse(saved));
         this.historyManager.init(this.elements);
       }
     } catch (e) {
       console.error('Failed to load from local storage', e);
     }
+  }
+
+  // Migrate legacy element.url → urlSpans
+  static _migrateElements(elements) {
+    return elements.map(el => {
+      if (el.type === 'text' && el.url && !el.urlSpans) {
+        el.urlSpans = [{ start: 0, end: el.text?.length ?? 0, url: el.url }];
+        delete el.url;
+      }
+      return el;
+    });
   }
 
   saveToLocalStorage() {
@@ -189,6 +206,7 @@ export class CanvasState {
       this.render();
       this.isDirty = false;
     }
+    if (this._onAfterRender) this._onAfterRender();
     requestAnimationFrame(() => this.requestRender());
   }
 
@@ -241,6 +259,30 @@ export class CanvasState {
       this.ctx.strokeRect(x, y, w, h);
     }
     
+    // Draw alignment guides
+    if (this.alignGuides && this.alignGuides.length > 0) {
+      this.ctx.save();
+      this.ctx.strokeStyle = '#3b82f6';
+      this.ctx.lineWidth = 1 / this.zoom;
+      this.ctx.setLineDash([5 / this.zoom, 5 / this.zoom]);
+      this.ctx.globalAlpha = 0.75;
+      const extent = 50000;
+      this.alignGuides.forEach(guide => {
+        this.ctx.beginPath();
+        if (guide.type === 'v') {
+          this.ctx.moveTo(guide.pos, -extent);
+          this.ctx.lineTo(guide.pos, extent);
+        } else {
+          this.ctx.moveTo(-extent, guide.pos);
+          this.ctx.lineTo(extent, guide.pos);
+        }
+        this.ctx.stroke();
+      });
+      this.ctx.setLineDash([]);
+      this.ctx.globalAlpha = 1;
+      this.ctx.restore();
+    }
+
     // Draw hovered connection points
     if (this.hoveredElement) {
       const points = this.getConnectionPoints(this.hoveredElement);

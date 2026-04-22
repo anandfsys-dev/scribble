@@ -220,19 +220,33 @@
       </div>
 
       <!-- ── Frames Panel ───────────────────────────────────────────── -->
-      <div id="frames-panel" class="frames-panel">
-        <div class="frames-panel-header">
+      <div id="frames-panel" class="frames-panel frames-panel--collapsed">
+
+        <!-- Header: always visible, click to toggle -->
+        <div class="frames-panel-header" id="btn-frames-toggle">
+          <svg class="frames-panel-icon" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+          </svg>
           <span class="frames-panel-title">Frames</span>
+          <span class="frames-count-badge" id="frames-count-badge" style="display:none"></span>
           <button id="btn-present" class="btn-present" title="Start Presentation">
             <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="none">
               <polygon points="5,3 19,12 5,21"/>
             </svg>
             Present
           </button>
+          <svg class="frames-panel-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="18 15 12 9 6 15"/>
+          </svg>
         </div>
-        <div id="frames-list" class="frames-list"></div>
-        <p id="frames-empty" class="frames-empty">No frames yet.<br>Use Frame tool (F) to draw one.</p>
-        <button id="btn-clear-frames" class="btn-clear-frames" style="display:none">Clear all frames</button>
+
+        <!-- Body: hidden when collapsed -->
+        <div class="frames-panel-body">
+          <div id="frames-list" class="frames-list"></div>
+          <p id="frames-empty" class="frames-empty">No frames yet.<br>Use Frame tool (F) to draw one.</p>
+          <button id="btn-clear-frames" class="btn-clear-frames" style="display:none">Clear all frames</button>
+        </div>
+
       </div>
 
       <!-- ── Presentation Blur Overlay ────────────────────────────────── -->
@@ -247,6 +261,55 @@
         </div>
         <button id="btn-prev-frame" class="pres-nav-btn pres-nav-prev" title="Previous (←)">‹</button>
         <button id="btn-next-frame" class="pres-nav-btn pres-nav-next" title="Next (→)">›</button>
+      </div>
+
+      <!-- ── Context Menu ─────────────────────────────────────────── -->
+      <div id="context-menu" class="context-menu hidden">
+        <button class="ctx-item" data-action="cut">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="20" r="3"/><circle cx="6" cy="4" r="3"/><line x1="6" x2="6" y1="7" y2="17"/><line x1="19" x2="6" y1="4" y2="20"/></svg>
+          <span class="ctx-label">Cut</span><span class="ctx-key">Ctrl+X</span>
+        </button>
+        <button class="ctx-item" data-action="copy">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          <span class="ctx-label">Copy</span><span class="ctx-key">Ctrl+C</span>
+        </button>
+        <button class="ctx-item" data-action="paste">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2"/><path d="M12 12v6"/><path d="m9 15 3 3 3-3"/></svg>
+          <span class="ctx-label">Paste</span><span class="ctx-key">Ctrl+V</span>
+        </button>
+        <div class="ctx-sep"></div>
+        <button class="ctx-item ctx-item-link" data-action="link" id="ctx-link-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span class="ctx-label">Add Link</span>
+        </button>
+        <button class="ctx-item" data-action="open-link" id="ctx-open-link-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+          <span class="ctx-label">Open Link</span>
+        </button>
+        <button class="ctx-item ctx-item-danger" data-action="remove-link" id="ctx-remove-link-btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18.84 12.25 1.72-1.71a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="m5.17 11.75-1.71 1.71a5 5 0 0 0 7.07 7.07l1.71-1.71"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+          <span class="ctx-label">Remove Link</span>
+        </button>
+      </div>
+
+      <!-- ── Link Dialog ────────────────────────────────────────── -->
+      <div id="link-dialog-overlay" class="link-dialog-overlay hidden">
+        <div class="link-dialog-box">
+          <p class="link-dialog-title">Hyperlink</p>
+          <input id="link-input" class="link-input" type="url" placeholder="https://example.com" autocomplete="off" spellcheck="false" />
+          <div class="link-dialog-btns">
+            <button id="link-cancel-btn" class="link-btn">Cancel</button>
+            <button id="link-confirm-btn" class="link-btn link-btn-primary">Save</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Link Tooltip ──────────────────────────────────────────── -->
+      <div id="link-tooltip" class="link-tooltip" style="display:none">
+        <a id="link-tooltip-url" class="link-tooltip-url" target="_blank" rel="noopener noreferrer"></a>
+        <button id="link-tooltip-edit" class="link-tooltip-btn" title="Edit link">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
       </div>
 
       <!-- ── Canvas ────────────────────────────────────────────────── -->

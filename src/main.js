@@ -134,6 +134,228 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ── URL span helpers ─────────────────────────────────────────────
+  function addUrlSpan(element, start, end, url) {
+    if (!element.urlSpans) element.urlSpans = [];
+    element.urlSpans = element.urlSpans.filter(s => s.end <= start || s.start >= end);
+    element.urlSpans.push({ start, end, url });
+    element.urlSpans.sort((a, b) => a.start - b.start);
+  }
+
+  function removeUrlSpansInRange(element, start, end) {
+    if (!element.urlSpans) return;
+    element.urlSpans = element.urlSpans.filter(s => s.end <= start || s.start >= end);
+    if (element.urlSpans.length === 0) delete element.urlSpans;
+  }
+
+  // ── Link Dialog ──────────────────────────────────────────────────
+  const linkDialogOverlay = document.getElementById('link-dialog-overlay');
+  const linkInput = document.getElementById('link-input');
+  // { element, start, end, textarea } — textarea is non-null when Ctrl+K triggered from editor
+  let linkDialogTarget = null;
+
+  function openLinkDialog(el) {
+    if (!el || el.type !== 'text') return;
+    const existing = el.urlSpans?.length > 0 ? el.urlSpans[0].url : '';
+    linkInput.value = existing;
+    linkDialogTarget = { element: el, start: 0, end: el.text.length, textarea: null };
+    linkDialogOverlay.classList.remove('hidden');
+    setTimeout(() => linkInput.focus(), 50);
+  }
+
+  function openLinkDialogForRange(element, start, end, textarea) {
+    const existing = (element.urlSpans || []).find(s => s.start <= start && s.end >= end);
+    linkInput.value = existing?.url || '';
+    linkDialogTarget = { element, start, end, textarea };
+    // Suppress textarea blur-commit while dialog is open
+    toolManager.tools.text._suppressBlurCommit = true;
+    linkDialogOverlay.classList.remove('hidden');
+    setTimeout(() => linkInput.focus(), 50);
+  }
+
+  function closeLinkDialog(refocusTextarea) {
+    linkDialogOverlay.classList.add('hidden');
+    const ta = linkDialogTarget?.textarea;
+    linkDialogTarget = null;
+    toolManager.tools.text._suppressBlurCommit = false;
+    if (refocusTextarea && ta) setTimeout(() => ta.focus(), 10);
+  }
+
+  function confirmLink() {
+    if (!linkDialogTarget) return;
+    const { element, start, end } = linkDialogTarget;
+    const raw = linkInput.value.trim();
+    const url = raw ? (raw.startsWith('http') ? raw : 'https://' + raw) : null;
+    if (url) {
+      addUrlSpan(element, start, end, url);
+    } else {
+      removeUrlSpansInRange(element, start, end);
+    }
+    canvasState.saveHistory();
+    canvasState.saveToLocalStorage();
+    canvasState.isDirty = true;
+    closeLinkDialog(true);
+  }
+
+  document.getElementById('link-confirm-btn').addEventListener('click', confirmLink);
+  document.getElementById('link-cancel-btn').addEventListener('click', () => closeLinkDialog(true));
+  linkInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); confirmLink(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeLinkDialog(true); }
+    e.stopPropagation();
+  });
+  linkDialogOverlay.addEventListener('pointerdown', (e) => {
+    if (e.target === linkDialogOverlay) closeLinkDialog(true);
+  });
+
+  // Wire up Ctrl+K from TextTool
+  toolManager.tools.text._onLinkRequest = (element, start, end, textarea) => {
+    openLinkDialogForRange(element, start, end, textarea);
+  };
+
+  // ── Link Tooltip (shown below selected linked text) ──────────────
+  const linkTooltip = document.getElementById('link-tooltip');
+  const linkTooltipUrl = document.getElementById('link-tooltip-url');
+  const linkTooltipEdit = document.getElementById('link-tooltip-edit');
+
+  linkTooltipEdit.addEventListener('click', () => {
+    const el = canvasState.selection[0];
+    if (el?.type === 'text') openLinkDialog(el);
+  });
+
+  canvasState._onAfterRender = () => {
+    const sel = canvasState.selection;
+    const isEditing = !!toolManager.tools.text._activeTextarea;
+    if (sel.length === 1 && sel[0].type === 'text' && sel[0].urlSpans?.length > 0 && !isEditing) {
+      const el = sel[0];
+      const b = canvasState.getElementBounds(el);
+      const cx = (b.minX + b.maxX) / 2;
+      const cy = b.maxY;
+      const sx = cx * canvasState.zoom + canvasState.pan.x;
+      const sy = cy * canvasState.zoom + canvasState.pan.y;
+      const firstUrl = el.urlSpans[0].url;
+      linkTooltipUrl.textContent = firstUrl.length > 42 ? firstUrl.slice(0, 39) + '…' : firstUrl;
+      linkTooltipUrl.href = firstUrl;
+      linkTooltip.style.display = 'flex';
+      linkTooltip.style.left = sx + 'px';
+      linkTooltip.style.top  = (sy + 10) + 'px';
+    } else {
+      linkTooltip.style.display = 'none';
+    }
+  };
+
+  // ── Context Menu ────────────────────────────────────────────────
+  const contextMenu = document.getElementById('context-menu');
+  const ctxLinkBtn = document.getElementById('ctx-link-btn');
+  const ctxOpenLinkBtn = document.getElementById('ctx-open-link-btn');
+  const ctxRemoveLinkBtn = document.getElementById('ctx-remove-link-btn');
+  let contextMenuTarget = null;
+
+  canvasEl.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const pos = canvasState.screenToCanvas(e.clientX, e.clientY);
+    const hitEl = canvasState.getElementAt(pos);
+
+    if (hitEl && !canvasState.selection.includes(hitEl)) {
+      canvasState.setSelection([hitEl]);
+    }
+    contextMenuTarget = hitEl || null;
+
+    const hasSelection = canvasState.selection.length > 0;
+    const isText = contextMenuTarget?.type === 'text';
+    const hasLinks = isText && !!contextMenuTarget.urlSpans?.length;
+
+    document.querySelector('[data-action="cut"]').classList.toggle('ctx-item--disabled', !hasSelection);
+    document.querySelector('[data-action="copy"]').classList.toggle('ctx-item--disabled', !hasSelection);
+
+    ctxLinkBtn.style.display = isText ? 'flex' : 'none';
+    ctxOpenLinkBtn.style.display = hasLinks ? 'flex' : 'none';
+    ctxRemoveLinkBtn.style.display = hasLinks ? 'flex' : 'none';
+    if (isText) ctxLinkBtn.querySelector('.ctx-label').textContent = hasLinks ? 'Edit Link' : 'Add Link';
+
+    const sep = contextMenu.querySelector('.ctx-sep');
+    sep.style.display = isText ? 'block' : 'none';
+
+    contextMenu.style.left = '0';
+    contextMenu.style.top = '0';
+    contextMenu.classList.remove('hidden');
+    const mw = contextMenu.offsetWidth, mh = contextMenu.offsetHeight;
+    contextMenu.style.left = Math.max(8, Math.min(e.clientX, window.innerWidth  - mw - 8)) + 'px';
+    contextMenu.style.top  = Math.max(8, Math.min(e.clientY, window.innerHeight - mh - 8)) + 'px';
+  });
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!contextMenu.contains(e.target)) contextMenu.classList.add('hidden');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      contextMenu.classList.add('hidden');
+      if (!linkDialogOverlay.classList.contains('hidden')) closeLinkDialog(true);
+    }
+  });
+
+  contextMenu.addEventListener('click', (e) => {
+    const item = e.target.closest('[data-action]');
+    if (!item || item.classList.contains('ctx-item--disabled')) return;
+    const action = item.dataset.action;
+    contextMenu.classList.add('hidden');
+
+    switch (action) {
+      case 'cut':
+        clipboard = JSON.parse(JSON.stringify(canvasState.selection));
+        clipboard.forEach(el => { delete el.startBinding; delete el.endBinding; });
+        if (canvasState.selection.length > 0) {
+          canvasState.selection.forEach(el => canvasState.removeElement(el));
+          canvasState.setSelection([]);
+        }
+        break;
+
+      case 'copy':
+        clipboard = JSON.parse(JSON.stringify(canvasState.selection));
+        clipboard.forEach(el => { delete el.startBinding; delete el.endBinding; });
+        break;
+
+      case 'paste':
+        if (clipboard.length > 0) {
+          const pasted = JSON.parse(JSON.stringify(clipboard));
+          pasted.forEach((el, index) => {
+            el.id = Date.now().toString() + index;
+            if (el.type === 'freehand') {
+              el.points = el.points.map(p => [p[0] + 20, p[1] + 20]);
+            } else {
+              el.x += 20; el.y += 20;
+              if (el.x2 !== undefined) el.x2 += 20;
+              if (el.y2 !== undefined) el.y2 += 20;
+            }
+            canvasState.elements.push(el);
+          });
+          canvasState.setSelection(pasted);
+          canvasState.saveHistory();
+          canvasState.isDirty = true;
+        }
+        break;
+
+      case 'link':
+        openLinkDialog(contextMenuTarget);
+        break;
+
+      case 'open-link':
+        if (contextMenuTarget?.urlSpans?.length) {
+          window.open(contextMenuTarget.urlSpans[0].url, '_blank', 'noopener');
+        }
+        break;
+
+      case 'remove-link':
+        if (contextMenuTarget) {
+          delete contextMenuTarget.urlSpans;
+          canvasState.saveHistory();
+          canvasState.saveToLocalStorage();
+          canvasState.isDirty = true;
+        }
+        break;
+    }
+  });
+
   // Handle Double Click to add text to shape or edit text
   canvasEl.addEventListener('dblclick', (e) => {
     const pos = canvasState.screenToCanvas(e.clientX, e.clientY);
@@ -283,6 +505,15 @@ function setupFramesPanel(state, engine) {
     const empty = document.getElementById('frames-empty');
     const frames = state.getFrames();
 
+    // Update badge
+    const badge = document.getElementById('frames-count-badge');
+    if (frames.length > 0) {
+      badge.textContent = frames.length;
+      badge.style.display = 'inline-flex';
+    } else {
+      badge.style.display = 'none';
+    }
+
     const clearBtn = document.getElementById('btn-clear-frames');
     if (frames.length === 0) {
       list.innerHTML = '';
@@ -380,8 +611,14 @@ function setupFramesPanel(state, engine) {
   state._onElementsChanged = renderFramesList;
   renderFramesList();
 
-  // Present button
-  document.getElementById('btn-present').addEventListener('click', () => {
+  // Toggle collapse/expand
+  document.getElementById('btn-frames-toggle').addEventListener('click', (e) => {
+    document.getElementById('frames-panel').classList.toggle('frames-panel--collapsed');
+  });
+
+  // Present button — stop propagation so it doesn't trigger the toggle
+  document.getElementById('btn-present').addEventListener('click', (e) => {
+    e.stopPropagation();
     if (state.getFrames().length === 0) return;
     engine.start(0);
   });

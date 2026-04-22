@@ -152,18 +152,26 @@ export class Renderer {
         
       case 'text': {
         const fontSize = style.fontSize || 24;
-        const textColor = style.textColor || style.strokeColor;
         const isCentered = element.textAlign === 'center';
+        const isDark = document.documentElement.classList.contains('dark');
+        const linkColor = isDark ? '#60a5fa' : '#1d4ed8';
+        const baseTextColor = style.textColor || style.strokeColor;
+
+        // Inline migration: legacy single url → urlSpans
+        if (element.url && !element.urlSpans) {
+          element.urlSpans = [{ start: 0, end: (element.text || '').length, url: element.url }];
+          delete element.url;
+        }
+        const urlSpans = element.urlSpans || [];
 
         this.ctx.font = `${style.fontItalic ? 'italic ' : ''}${style.fontBold ? 'bold ' : ''}${fontSize}px 'Caveat', cursive`;
-        this.ctx.fillStyle = textColor;
-        this.ctx.textAlign = isCentered ? 'center' : 'left';
         this.ctx.textBaseline = 'middle';
+        this.ctx.textAlign = 'left'; // segment rendering always uses left; centered handled via x offset
 
-        const lines = this.wrapText(this.ctx, element.text, element.maxWidth, fontSize);
+        const lines = this.wrapTextWithOffsets(this.ctx, element.text, element.maxWidth);
         const lineHeight = fontSize * 1.2;
         const totalHeight = lines.length * lineHeight;
-        const measuredWidth = lines.length ? Math.max(...lines.map(l => this.ctx.measureText(l).width)) : 0;
+        const measuredWidth = lines.length ? Math.max(...lines.map(l => this.ctx.measureText(l.text).width)) : 0;
         const width = element.maxWidth || Math.max(measuredWidth, 1);
 
         element.width = width;
@@ -171,33 +179,44 @@ export class Renderer {
 
         const startY = y - totalHeight / 2 + lineHeight / 2;
 
-        lines.forEach((line, i) => {
-          const lineY = startY + i * lineHeight;
-          this.ctx.fillText(line, x, lineY);
+        for (let li = 0; li < lines.length; li++) {
+          const { text: lineText, startOffset } = lines[li];
+          const lineY = startY + li * lineHeight;
+          const lineWidth = this.ctx.measureText(lineText).width;
+          const lineStartX = isCentered ? x - lineWidth / 2 : x;
+          const segments = this._getLineSegments(lineText, startOffset, urlSpans);
 
-          if (style.fontUnderline || style.fontStrikethrough) {
-            const lw = this.ctx.measureText(line).width;
-            const lx = isCentered ? x - lw / 2 : x;
-            this.ctx.save();
-            this.ctx.strokeStyle = textColor;
-            this.ctx.lineWidth = Math.max(1, fontSize / 20);
-            this.ctx.lineCap = 'round';
-            if (style.fontUnderline) {
-              const uy = lineY + fontSize * 0.42;
-              this.ctx.beginPath();
-              this.ctx.moveTo(lx, uy);
-              this.ctx.lineTo(lx + lw, uy);
-              this.ctx.stroke();
+          let curX = lineStartX;
+          for (const seg of segments) {
+            const color = seg.url ? linkColor : baseTextColor;
+            this.ctx.fillStyle = color;
+            this.ctx.fillText(seg.text, curX, lineY);
+            const segW = this.ctx.measureText(seg.text).width;
+
+            const needsDec = style.fontUnderline || style.fontStrikethrough || !!seg.url;
+            if (needsDec) {
+              this.ctx.save();
+              this.ctx.strokeStyle = color;
+              this.ctx.lineWidth = Math.max(1, fontSize / 20);
+              this.ctx.lineCap = 'round';
+              if (style.fontUnderline || seg.url) {
+                const uy = lineY + fontSize * 0.42;
+                this.ctx.beginPath();
+                this.ctx.moveTo(curX, uy);
+                this.ctx.lineTo(curX + segW, uy);
+                this.ctx.stroke();
+              }
+              if (style.fontStrikethrough) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(curX, lineY);
+                this.ctx.lineTo(curX + segW, lineY);
+                this.ctx.stroke();
+              }
+              this.ctx.restore();
             }
-            if (style.fontStrikethrough) {
-              this.ctx.beginPath();
-              this.ctx.moveTo(lx, lineY);
-              this.ctx.lineTo(lx + lw, lineY);
-              this.ctx.stroke();
-            }
-            this.ctx.restore();
+            curX += segW;
           }
-        });
+        }
 
         const bboxX = isCentered ? x - width / 2 : x;
 
@@ -232,6 +251,68 @@ export class Renderer {
     }
 
     this.ctx.restore();
+  }
+
+  // Returns [{text, startOffset}] — same wrapping as wrapText but tracks char offsets for span rendering.
+  wrapTextWithOffsets(ctx, text, maxWidth) {
+    if (!maxWidth) {
+      let offset = 0;
+      return text.split('\n').map(line => {
+        const r = { text: line, startOffset: offset };
+        offset += line.length + 1;
+        return r;
+      });
+    }
+    const result = [];
+    const paragraphs = text.split('\n');
+    let globalOffset = 0;
+    for (const paragraph of paragraphs) {
+      if (!paragraph) {
+        result.push({ text: '', startOffset: globalOffset });
+        globalOffset += 1;
+        continue;
+      }
+      const words = paragraph.split(' ');
+      let currentLine = '';
+      let lineStartOffset = globalOffset;
+      for (const word of words) {
+        const testLine = currentLine ? currentLine + ' ' + word : word;
+        if (ctx.measureText(testLine).width > maxWidth && currentLine) {
+          result.push({ text: currentLine, startOffset: lineStartOffset });
+          lineStartOffset += currentLine.length + 1; // consumed chars + the breaking space
+          currentLine = word;
+        } else {
+          currentLine = testLine;
+        }
+      }
+      result.push({ text: currentLine, startOffset: lineStartOffset });
+      globalOffset += paragraph.length + 1; // +1 for '\n'
+    }
+    return result;
+  }
+
+  // Split one visual line into [{text, url}] segments based on urlSpans.
+  _getLineSegments(lineText, lineStart, urlSpans) {
+    const len = lineText.length;
+    if (!urlSpans || urlSpans.length === 0) return [{ text: lineText, url: null }];
+    // Map each character position to a url (null = plain)
+    const urlAt = new Array(len).fill(null);
+    for (const span of urlSpans) {
+      const s = Math.max(span.start - lineStart, 0);
+      const e = Math.min(span.end - lineStart, len);
+      for (let i = s; i < e; i++) urlAt[i] = span.url;
+    }
+    // Group consecutive chars with the same url
+    const segments = [];
+    let i = 0;
+    while (i < len) {
+      const url = urlAt[i];
+      let j = i + 1;
+      while (j < len && urlAt[j] === url) j++;
+      segments.push({ text: lineText.substring(i, j), url });
+      i = j;
+    }
+    return segments;
   }
 
   wrapText(ctx, text, maxWidth, fontSize) {

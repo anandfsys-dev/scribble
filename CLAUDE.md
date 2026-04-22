@@ -47,9 +47,15 @@ src/style.css                     — Tailwind imports + canvas/panel positionin
   x2, y2,             // end point for line/arrow
   points,             // [[x,y], ...] for freehand
   text, maxWidth,     // text elements
+  textAlign,          // text elements only: 'center' for shape captions, omit/undefined for left-aligned
   startBinding, endBinding,  // arrows: { elementId, key: 'top'|'bottom'|'left'|'right' }
   name, frameOrder,   // frame elements: display label and sort index for presentation order
-  style: { strokeColor, strokeWidth, fillColor, textColor, fontSize }
+  style: {
+    strokeColor, strokeWidth, fillColor,
+    textColor, fontSize,               // fontSize is a number from [12,14,16,18,20,24,28,32,36,48,64,96]
+    fontBold, fontItalic,              // boolean — canvas uses 'bold'/'italic' in ctx.font string
+    fontUnderline, fontStrikethrough   // boolean — drawn manually as lines (canvas has no text-decoration)
+  }
   // Note: frame elements have NO style property — use fixed visual appearance
 }
 ```
@@ -79,6 +85,15 @@ src/style.css                     — Tailwind imports + canvas/panel positionin
 - **Presentation blocks undo/redo and canvas events** (`CanvasState.js`, `ToolManager.js`): While `isPresenting` is true, `undo()`/`redo()` return early and `ToolManager` ignores all pointer events — this prevents accidental edits while navigating slides.
 - **`_onElementsChanged` callback** (`CanvasState.js`): Set `state._onElementsChanged = fn` to get notified after every `saveToLocalStorage()` call — used by the Frames panel to re-render its list without polling.
 - **`state.getFrames()`** (`CanvasState.js`): Single source of truth for the sorted frame list — use this everywhere instead of inline `filter + sort` to stay consistent.
+- **Font size is a stepped set, not a free value** (`main.js`, `FONT_SIZES`): The allowed font sizes are `[12,14,16,18,20,24,28,32,36,48,64,96]`; Ctrl+Shift+Period/Comma steps through this array — use `e.code` (not `e.key`) for these shortcuts because `e.key` for `>` is unreliable when Ctrl is held on Windows.
+- **Underline/strikethrough are drawn manually** (`Renderer.js`): Canvas 2D has no `textDecoration` API, so underline and strikethrough are painted as `ctx.stroke()` lines after each text row; the x-origin must account for `textAlign === 'center'` (use `x - lineWidth/2`) vs left-aligned (use `x`).
+- **Arrow/line hit-testing uses path distance** (`HitTestUtils.js`): Lines use `distToSegment`; arrows sample 24 points along the cubic bezier (control points mirrored from `Renderer.js`) and return min distance — bounding-box testing caused shapes beneath curved arrows to become unselectable.
+- **Alignment guides live on `canvasState.alignGuides`** (`SelectTool.js`, `CanvasState.js`): During drag, `SelectTool.computeAlignSnap()` checks proposed group bounds against all non-selected elements (threshold 8px), snaps dx/dy, and stores `{ type: 'v'|'h', pos }` guide entries drawn in the render loop; guides are cleared on pointer-up.
+- **Hyperlinks stored as `element.urlSpans`** (`Renderer.js`, `main.js`): Text elements gain an optional `urlSpans: [{start, end, url}]` array (character ranges). The renderer splits each visual line into plain/linked segments via `_getLineSegments()` and renders linked segments in blue with forced underline — `style.textColor` is not touched. Ctrl+K during text editing opens the link dialog for the textarea's current selection. A link tooltip (`#link-tooltip`) floats below the selected element, updated every rAF tick via `canvasState._onAfterRender`. Legacy `element.url` is migrated to `urlSpans` both on localStorage load and inline during rendering.
+- **TextTool `_suppressBlurCommit`** (`TextTool.js`): When Ctrl+K opens the link dialog while a textarea is active, `_suppressBlurCommit = true` prevents the blur handler from committing and removing the textarea. It is reset to `false` when the dialog closes (confirm or cancel), after which the textarea is re-focused.
+- **Centered text captions** (`TextTool.js`, `HitTestUtils.js`, `SelectTool.js`): When text is created by double-clicking a rectangle/ellipse, `element.textAlign = 'center'` is stored and `element.x` becomes the horizontal center (not left edge). Every consumer — hit-testing, bounding box, resize handles, textarea positioning — must branch on `element.textAlign === 'center'`.
+- **Panel interaction can clear selection** (`main.js`): Clicking a native `<select>` or a button in the properties panel fires `window.pointerup`, which may race with the `change`/`click` handler. The fix: save `state.selection` on `mousedown` of each panel control and restore it before applying the style change.
+- **Text style keyboard shortcuts use `e.code`** (`main.js`): Ctrl+B/I use `e.code === 'KeyB'`/`'KeyI'`; Ctrl+Shift+S uses `e.code === 'KeyS'` with `e.shiftKey` — avoids locale/OS differences in `e.key` values under modifier keys.
 
 ## Dev Commands
 ```bash
