@@ -12,12 +12,15 @@ export function getConnectionPoints(el) {
   }
   if (el.type === 'text') {
     const w = el.width || 100, h = el.height || 50;
+    const cx = el.textAlign === 'center' ? el.x : el.x + w / 2;
+    const left = el.textAlign === 'center' ? el.x - w / 2 : el.x;
+    const right = left + w;
     return {
-      top:    { x: el.x + w / 2, y: el.y - h / 2 },
-      bottom: { x: el.x + w / 2, y: el.y + h / 2 },
-      left:   { x: el.x,         y: el.y },
-      right:  { x: el.x + w,     y: el.y },
-      center: { x: el.x + w / 2, y: el.y }
+      top:    { x: cx,    y: el.y - h / 2 },
+      bottom: { x: cx,    y: el.y + h / 2 },
+      left:   { x: left,  y: el.y },
+      right:  { x: right, y: el.y },
+      center: { x: cx,    y: el.y }
     };
   }
   return null;
