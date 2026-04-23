@@ -52,6 +52,9 @@ export class CanvasState {
     this.searchHighlightId = null;
     this.searchQuery = null;
 
+    // Group edit mode: groupId of the group being individually edited, or null
+    this.editingGroupId = null;
+
     // Called each rAF tick — used by main.js to update DOM overlays (link tooltip, etc.)
     this._onAfterRender = null;
 
@@ -153,6 +156,72 @@ export class CanvasState {
     this.saveToLocalStorage();
   }
 
+  bringToFront() {
+    const sel = new Set(this.selection.filter(el => el.type !== 'frame'));
+    if (!sel.size) return;
+    this.saveHistory();
+    this.elements = [...this.elements.filter(el => !sel.has(el)), ...this.elements.filter(el => sel.has(el))];
+    this.isDirty = true;
+    this.saveToLocalStorage();
+  }
+
+  sendToBack() {
+    const sel = new Set(this.selection.filter(el => el.type !== 'frame'));
+    if (!sel.size) return;
+    this.saveHistory();
+    this.elements = [...this.elements.filter(el => sel.has(el)), ...this.elements.filter(el => !sel.has(el))];
+    this.isDirty = true;
+    this.saveToLocalStorage();
+  }
+
+  bringForward() {
+    const sel = new Set(this.selection.filter(el => el.type !== 'frame'));
+    if (!sel.size) return;
+    this.saveHistory();
+    for (let i = this.elements.length - 2; i >= 0; i--) {
+      if (sel.has(this.elements[i]) && !sel.has(this.elements[i + 1]))
+        [this.elements[i], this.elements[i + 1]] = [this.elements[i + 1], this.elements[i]];
+    }
+    this.isDirty = true;
+    this.saveToLocalStorage();
+  }
+
+  sendBackward() {
+    const sel = new Set(this.selection.filter(el => el.type !== 'frame'));
+    if (!sel.size) return;
+    this.saveHistory();
+    for (let i = 1; i < this.elements.length; i++) {
+      if (sel.has(this.elements[i]) && !sel.has(this.elements[i - 1]))
+        [this.elements[i], this.elements[i - 1]] = [this.elements[i - 1], this.elements[i]];
+    }
+    this.isDirty = true;
+    this.saveToLocalStorage();
+  }
+
+  getGroupMembers(groupId) {
+    return this.elements.filter(el => el.groupId === groupId);
+  }
+
+  groupElements() {
+    const targets = this.selection.filter(el => el.type !== 'frame');
+    if (targets.length < 2) return;
+    this.saveHistory();
+    const newGroupId = Date.now().toString() + 'g';
+    targets.forEach(el => { el.groupId = newGroupId; });
+    this.isDirty = true;
+    this.saveToLocalStorage();
+  }
+
+  ungroupElements() {
+    const targets = this.selection.filter(el => el.groupId);
+    if (!targets.length) return;
+    this.saveHistory();
+    targets.forEach(el => { delete el.groupId; });
+    this.editingGroupId = null;
+    this.isDirty = true;
+    this.saveToLocalStorage();
+  }
+
   clearCanvas() {
     if (this.elements.length === 0) return;
     this.elements = [];
@@ -243,11 +312,31 @@ export class CanvasState {
         if (el.type === 'frame') this.renderer.drawElement(el, this.selection.includes(el));
       });
     }
-    // Draw all non-frame elements
+    // Draw all non-frame elements; suppress individual selection handles for whole-group selections
     this.elements.forEach(el => {
-      if (el.type !== 'frame') this.renderer.drawElement(el, this.selection.includes(el));
+      if (el.type !== 'frame') {
+        const individuallySelected = this.selection.includes(el) &&
+          (!el.groupId || this.editingGroupId === el.groupId);
+        this.renderer.drawElement(el, individuallySelected);
+      }
     });
-    
+
+    // Draw group outlines (faint when idle, prominent when any member is selected/in edit)
+    const seenGroupIds = new Set();
+    this.elements.forEach(el => { if (el.groupId) seenGroupIds.add(el.groupId); });
+    seenGroupIds.forEach(gid => {
+      const members = this.getGroupMembers(gid);
+      const b = members.reduce((acc, el) => {
+        const eb = this.getElementBounds(el);
+        return {
+          minX: Math.min(acc.minX, eb.minX), minY: Math.min(acc.minY, eb.minY),
+          maxX: Math.max(acc.maxX, eb.maxX), maxY: Math.max(acc.maxY, eb.maxY)
+        };
+      }, { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity });
+      const isActive = this.selection.some(el => el.groupId === gid) || this.editingGroupId === gid;
+      this.renderer.drawGroupOutline(b, isActive);
+    });
+
     // Draw selection marquee
     if (this.selectionBox) {
       const { start, end } = this.selectionBox;

@@ -75,6 +75,16 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyG') {
+      e.preventDefault();
+      if (e.shiftKey) {
+        canvasState.ungroupElements();
+      } else {
+        canvasState.groupElements();
+      }
+      return;
+    }
+
     if ((e.ctrlKey || e.metaKey)) {
         const key = e.key.toLowerCase();
         if (key === 'c') {
@@ -90,8 +100,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (key === 'v') {
             if (clipboard.length > 0) {
                 const pasted = JSON.parse(JSON.stringify(clipboard));
+                const pasteGroupIdMap = {};
                 pasted.forEach((el, index) => {
                     el.id = Date.now().toString() + index;
+                    if (el.groupId) {
+                      if (!pasteGroupIdMap[el.groupId]) pasteGroupIdMap[el.groupId] = Date.now().toString() + 'g';
+                      el.groupId = pasteGroupIdMap[el.groupId];
+                    }
                     if (el.type === 'freehand') {
                         el.points = el.points.map(p => [p[0] + 20, p[1] + 20]);
                     } else {
@@ -249,6 +264,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const ctxLinkBtn = document.getElementById('ctx-link-btn');
   const ctxOpenLinkBtn = document.getElementById('ctx-open-link-btn');
   const ctxRemoveLinkBtn = document.getElementById('ctx-remove-link-btn');
+  const ctxGroupSep   = document.getElementById('ctx-group-sep');
+  const ctxGroupBtn   = document.getElementById('ctx-group-btn');
+  const ctxUngroupBtn = document.getElementById('ctx-ungroup-btn');
+  const ctxOrderSep   = document.getElementById('ctx-order-sep');
   let contextMenuTarget = null;
 
   canvasEl.addEventListener('contextmenu', (e) => {
@@ -256,7 +275,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const pos = canvasState.screenToCanvas(e.clientX, e.clientY);
     const hitEl = canvasState.getElementAt(pos);
 
-    if (hitEl && !canvasState.selection.includes(hitEl)) {
+    // Right-click on a grouped element: select whole group (unless in edit mode)
+    if (hitEl?.groupId && canvasState.editingGroupId !== hitEl.groupId) {
+      if (!canvasState.selection.some(el => el.groupId === hitEl.groupId)) {
+        canvasState.setSelection(canvasState.getGroupMembers(hitEl.groupId));
+      }
+    } else if (hitEl && !canvasState.selection.includes(hitEl)) {
       canvasState.setSelection([hitEl]);
     }
     contextMenuTarget = hitEl || null;
@@ -273,8 +297,22 @@ document.addEventListener('DOMContentLoaded', () => {
     ctxRemoveLinkBtn.style.display = hasLinks ? 'flex' : 'none';
     if (isText) ctxLinkBtn.querySelector('.ctx-label').textContent = hasLinks ? 'Edit Link' : 'Add Link';
 
-    const sep = contextMenu.querySelector('.ctx-sep');
-    sep.style.display = isText ? 'block' : 'none';
+    const linkSep = document.getElementById('ctx-link-sep');
+    linkSep.style.display = isText ? 'block' : 'none';
+
+    const nonFrameSel = canvasState.selection.filter(el => el.type !== 'frame');
+    const canGroup = nonFrameSel.length >= 2 &&
+      !nonFrameSel.every(el => el.groupId && el.groupId === nonFrameSel[0].groupId);
+    const canUngroup = nonFrameSel.some(el => el.groupId);
+    ctxGroupSep.style.display   = (canGroup || canUngroup) ? 'block' : 'none';
+    ctxGroupBtn.style.display   = canGroup   ? 'flex' : 'none';
+    ctxUngroupBtn.style.display = canUngroup ? 'flex' : 'none';
+
+    const hasOrderable = nonFrameSel.length > 0;
+    ctxOrderSep.style.display = hasOrderable ? 'block' : 'none';
+    ['bring-to-front', 'bring-forward', 'send-backward', 'send-to-back'].forEach(a => {
+      document.querySelector(`[data-action="${a}"]`).style.display = hasOrderable ? 'flex' : 'none';
+    });
 
     contextMenu.style.left = '0';
     contextMenu.style.top = '0';
@@ -290,7 +328,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       contextMenu.classList.add('hidden');
-      if (!linkDialogOverlay.classList.contains('hidden')) closeLinkDialog(true);
+      if (!linkDialogOverlay.classList.contains('hidden')) {
+        closeLinkDialog(true);
+      } else if (canvasState.editingGroupId) {
+        const members = canvasState.getGroupMembers(canvasState.editingGroupId);
+        canvasState.editingGroupId = null;
+        canvasState.setSelection(members);
+        canvasState.isDirty = true;
+      }
     }
   });
 
@@ -318,8 +363,13 @@ document.addEventListener('DOMContentLoaded', () => {
       case 'paste':
         if (clipboard.length > 0) {
           const pasted = JSON.parse(JSON.stringify(clipboard));
+          const ctxPasteGroupIdMap = {};
           pasted.forEach((el, index) => {
             el.id = Date.now().toString() + index;
+            if (el.groupId) {
+              if (!ctxPasteGroupIdMap[el.groupId]) ctxPasteGroupIdMap[el.groupId] = Date.now().toString() + 'g';
+              el.groupId = ctxPasteGroupIdMap[el.groupId];
+            }
             if (el.type === 'freehand') {
               el.points = el.points.map(p => [p[0] + 20, p[1] + 20]);
             } else {
@@ -353,6 +403,13 @@ document.addEventListener('DOMContentLoaded', () => {
           canvasState.isDirty = true;
         }
         break;
+
+      case 'group':           canvasState.groupElements();  break;
+      case 'ungroup':         canvasState.ungroupElements(); break;
+      case 'bring-to-front':  canvasState.bringToFront();   break;
+      case 'bring-forward':   canvasState.bringForward();   break;
+      case 'send-backward':   canvasState.sendBackward();   break;
+      case 'send-to-back':    canvasState.sendToBack();     break;
     }
   });
 
@@ -360,6 +417,14 @@ document.addEventListener('DOMContentLoaded', () => {
   canvasEl.addEventListener('dblclick', (e) => {
     const pos = canvasState.screenToCanvas(e.clientX, e.clientY);
     const hitElement = canvasState.getElementAt(pos);
+
+    // Double-click on a grouped element: enter group edit mode (select individual element)
+    if (hitElement?.groupId && canvasState.editingGroupId !== hitElement.groupId) {
+      canvasState.editingGroupId = hitElement.groupId;
+      canvasState.setSelection([hitElement]);
+      canvasState.isDirty = true;
+      return;
+    }
 
     if (hitElement) {
       if (hitElement.type === 'text') {
@@ -550,8 +615,9 @@ function setupToolbar(state, toolManager) {
       // Update UI
       document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      
+
       // Update state
+      state.editingGroupId = null;
       toolManager.setActiveTool(toolName);
     });
   });

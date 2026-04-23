@@ -96,6 +96,33 @@ export class SelectTool {
 
     const clickedElement = this.state.getElementAt(pos);
 
+    // Group-aware click: if element belongs to a group and we're not in edit mode for it,
+    // select/toggle the whole group instead of just the individual element.
+    if (clickedElement?.groupId && this.state.editingGroupId !== clickedElement.groupId) {
+      const members = this.state.getGroupMembers(clickedElement.groupId);
+      const allSelected = members.every(m => this.state.selection.includes(m));
+      if (e.shiftKey || e.ctrlKey || e.metaKey) {
+        if (allSelected) {
+          this.state.setSelection(this.state.selection.filter(m => !members.includes(m)));
+        } else {
+          this.state.setSelection([...this.state.selection, ...members.filter(m => !this.state.selection.includes(m))]);
+        }
+      } else {
+        this.state.setSelection(members);
+      }
+      this.wasSelectedBeforeClick = allSelected;
+      this.toggleElement = null;
+      this.isDragging = true;
+      this.hasDuplicatedThisDrag = false;
+      this.dragStart = { x: pos.x, y: pos.y };
+      this.hasMoved = false;
+      this.originalPositions = this.state.selection.map(el => ({
+        id: el.id, x: el.x, y: el.y, x2: el.x2, y2: el.y2,
+        points: el.points ? JSON.parse(JSON.stringify(el.points)) : null
+      }));
+      return;
+    }
+
     if (clickedElement) {
       this.wasSelectedBeforeClick = this.state.selection.includes(clickedElement);
       this.toggleElement = (e.shiftKey || e.ctrlKey || e.metaKey) ? clickedElement : null;
@@ -124,7 +151,11 @@ export class SelectTool {
       return;
     }
 
-    // Clicked on empty space: Start selection marquee
+    // Clicked on empty space: exit group edit mode if active, then start selection marquee
+    if (this.state.editingGroupId) {
+      this.state.editingGroupId = null;
+      this.state.isDirty = true;
+    }
     this.isSelecting = true;
     this.selectionStart = { x: pos.x, y: pos.y };
     this.selectionEnd = { x: pos.x, y: pos.y };
@@ -223,11 +254,16 @@ export class SelectTool {
 
       // Handle Ctrl + Drag to duplicate
       if ((e.ctrlKey || e.metaKey) && !this.hasDuplicatedThisDrag && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+        const groupIdMap = {};
         const duplicates = this.state.selection.map(el => {
             const dup = JSON.parse(JSON.stringify(el));
             dup.id = Date.now().toString() + Math.random().toString(36).substr(2, 5);
             delete dup.startBinding;
             delete dup.endBinding;
+            if (dup.groupId) {
+              if (!groupIdMap[dup.groupId]) groupIdMap[dup.groupId] = Date.now().toString() + 'g';
+              dup.groupId = groupIdMap[dup.groupId];
+            }
             return dup;
         });
 
@@ -434,10 +470,17 @@ export class SelectTool {
       const maxY = Math.max(this.selectionStart.y, this.selectionEnd.y);
 
       if (Math.abs(maxX - minX) > 2 || Math.abs(maxY - minY) > 2) {
-        const selected = this.state.elements.filter(el => {
+        let selected = this.state.elements.filter(el => {
           const bounds = this.state.getElementBounds(el);
           return bounds.minX <= maxX && bounds.maxX >= minX &&
                  bounds.minY <= maxY && bounds.maxY >= minY;
+        });
+        // Expand to include all members of any partially-lassoed group
+        const hitGroupIds = new Set(selected.filter(el => el.groupId).map(el => el.groupId));
+        hitGroupIds.forEach(gid => {
+          this.state.getGroupMembers(gid).forEach(m => {
+            if (!selected.includes(m)) selected.push(m);
+          });
         });
         this.state.setSelection(selected);
       }

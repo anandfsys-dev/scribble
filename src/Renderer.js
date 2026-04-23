@@ -432,6 +432,21 @@ export class Renderer {
     this.drawBoundingBox(minX, minY, width, height);
   }
 
+  drawGroupOutline(bounds, isActive) {
+    const pad = 10;
+    this.ctx.save();
+    this.ctx.strokeStyle = isActive ? 'rgba(185,85,48,0.55)' : 'rgba(185,85,48,0.22)';
+    this.ctx.lineWidth = 1;
+    this.ctx.setLineDash(isActive ? [5, 5] : [3, 6]);
+    this.ctx.strokeRect(
+      bounds.minX - pad, bounds.minY - pad,
+      (bounds.maxX - bounds.minX) + pad * 2,
+      (bounds.maxY - bounds.minY) + pad * 2
+    );
+    this.ctx.setLineDash([]);
+    this.ctx.restore();
+  }
+
   drawBoundingBoxForPoints(points) {
     if (!points || points.length === 0) return;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
