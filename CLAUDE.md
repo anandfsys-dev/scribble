@@ -94,6 +94,7 @@ src/style.css                     — Tailwind imports + canvas/panel positionin
 - **Centered text captions** (`TextTool.js`, `HitTestUtils.js`, `SelectTool.js`): When text is created by double-clicking a rectangle/ellipse, `element.textAlign = 'center'` is stored and `element.x` becomes the horizontal center (not left edge). Every consumer — hit-testing, bounding box, resize handles, textarea positioning — must branch on `element.textAlign === 'center'`.
 - **Panel interaction can clear selection** (`main.js`): Clicking a native `<select>` or a button in the properties panel fires `window.pointerup`, which may race with the `change`/`click` handler. The fix: save `state.selection` on `mousedown` of each panel control and restore it before applying the style change.
 - **Text style keyboard shortcuts use `e.code`** (`main.js`): Ctrl+B/I use `e.code === 'KeyB'`/`'KeyI'`; Ctrl+Shift+S uses `e.code === 'KeyS'` with `e.shiftKey` — avoids locale/OS differences in `e.key` values under modifier keys.
+- **PNG export uses a fresh `Renderer` per call** (`Exporter.js`): `exportPng` instantiates `new Renderer(offCtx)` on an offscreen canvas because `Renderer`'s constructor calls `rough.canvas(ctx.canvas)` — RoughJS binds to the canvas element, not the context, so the live renderer cannot be reused. Text element bounds from `getElementBounds` are only accurate if the live canvas has rendered at least once, since `drawElement` writes back `element.width`/`height` for text during rendering.
 
 ## Dev Commands
 ```bash
