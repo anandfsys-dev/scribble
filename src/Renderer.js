@@ -34,36 +34,48 @@ export class Renderer {
       this.ctx.textBaseline = 'bottom';
       this.ctx.fillText(element.name || 'Frame', normX + 4, normY - 4);
 
+      if (isSelected) this.drawResizeHandles(normX, normY, normW, normH);
+
       this.ctx.restore();
       return;
     }
 
     // Convert our internal style to roughjs options (all non-frame elements)
+    // seed makes RoughJS deterministic per element — without it every render frame
+    // produces slightly different random paths, causing visible shivering.
+    const idNum = parseInt(element.id, 10);
     const roughOptions = {
       stroke: style.strokeColor,
       strokeWidth: style.strokeWidth,
       fill: style.fillColor === 'transparent' ? undefined : style.fillColor,
       fillStyle: 'hachure',
       roughness: type === 'freehand' ? 0 : 1.5,
-      bowing: type === 'freehand' ? 0 : 1
+      bowing: type === 'freehand' ? 0 : 1,
+      seed: (isNaN(idNum) ? 1 : idNum % 65521) || 1
     };
 
     switch (type) {
       case 'rectangle':
         this.rc.rectangle(x, y, element.width, element.height, roughOptions);
 
-        if (isSelected) this.drawBoundingBox(x, y, element.width, element.height);
+        if (isSelected) {
+          this.drawBoundingBox(x, y, element.width, element.height);
+          this.drawResizeHandles(x, y, element.width, element.height);
+        }
         break;
-        
+
       case 'ellipse':
         // roughjs ellipse takes center x, center y, width, height
         this.rc.ellipse(x + element.width / 2, y + element.height / 2, element.width, element.height, roughOptions);
-        if (isSelected) this.drawBoundingBox(x, y, element.width, element.height);
+        if (isSelected) {
+          this.drawBoundingBox(x, y, element.width, element.height);
+          this.drawResizeHandles(x, y, element.width, element.height);
+        }
         break;
-        
+
       case 'line':
         this.rc.line(x, y, element.x2, element.y2, roughOptions);
-        if (isSelected) this.drawBoundingBoxForLine(x, y, element.x2, element.y2);
+        if (isSelected) this.drawEndpointHandles(x, y, element.x2, element.y2);
         break;
         
       case 'arrow': {
@@ -138,7 +150,7 @@ export class Renderer {
         }
         this.drawArrowHead(hx1, hy1, element.x2, element.y2, roughOptions);
 
-        if (isSelected) this.drawBoundingBoxForLine(x, y, element.x2, element.y2);
+        if (isSelected) this.drawEndpointHandles(x, y, element.x2, element.y2);
         break;
       }
         
@@ -358,6 +370,44 @@ export class Renderer {
     const rightX = x2 - headLength * Math.cos(angle + Math.PI / 6);
     const rightY = y2 - headLength * Math.sin(angle + Math.PI / 6);
     this.rc.line(x2, y2, rightX, rightY, roughOptions);
+  }
+
+  drawResizeHandles(x, y, width, height) {
+    const rx = width < 0 ? x + width : x;
+    const ry = height < 0 ? y + height : y;
+    const rw = Math.abs(width);
+    const rh = Math.abs(height);
+    const positions = [
+      { x: rx,          y: ry           }, // nw
+      { x: rx + rw / 2, y: ry           }, // n
+      { x: rx + rw,     y: ry           }, // ne
+      { x: rx + rw,     y: ry + rh / 2  }, // e
+      { x: rx + rw,     y: ry + rh      }, // se
+      { x: rx + rw / 2, y: ry + rh      }, // s
+      { x: rx,          y: ry + rh      }, // sw
+      { x: rx,          y: ry + rh / 2  }, // w
+    ];
+    this.ctx.fillStyle = '#b95530';
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 1.5;
+    positions.forEach(h => {
+      this.ctx.beginPath();
+      this.ctx.arc(h.x, h.y, 5, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.stroke();
+    });
+  }
+
+  drawEndpointHandles(x1, y1, x2, y2) {
+    this.ctx.fillStyle = '#b95530';
+    this.ctx.strokeStyle = '#ffffff';
+    this.ctx.lineWidth = 1.5;
+    [[x1, y1], [x2, y2]].forEach(([hx, hy]) => {
+      this.ctx.beginPath();
+      this.ctx.arc(hx, hy, 6, 0, Math.PI * 2);
+      this.ctx.fill();
+      this.ctx.stroke();
+    });
   }
 
   drawBoundingBox(x, y, width, height) {

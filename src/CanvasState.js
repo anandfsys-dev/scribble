@@ -48,6 +48,10 @@ export class CanvasState {
     // Alignment guides (set by SelectTool during drag, cleared on release)
     this.alignGuides = [];
 
+    // Search highlight state
+    this.searchHighlightId = null;
+    this.searchQuery = null;
+
     // Called each rAF tick — used by main.js to update DOM overlays (link tooltip, etc.)
     this._onAfterRender = null;
 
@@ -202,7 +206,7 @@ export class CanvasState {
   
   // Render loop
   requestRender() {
-    if (this.isDirty) {
+    if (this.isDirty || this.searchHighlightId) {
       this.render();
       this.isDirty = false;
     }
@@ -300,6 +304,72 @@ export class CanvasState {
       }
     }
     
+    // Draw search highlight
+    if (this.searchHighlightId) {
+      const el = this.elements.find(e => e.id === this.searchHighlightId);
+      if (el) {
+        const t = Date.now();
+        if (el.type === 'text' && this.searchQuery && el.text) {
+          // Word-level yellow highlight drawn over the text (semi-transparent so text stays readable)
+          const { style } = el;
+          const fontSize = style.fontSize || 24;
+          const isCentered = el.textAlign === 'center';
+          this.ctx.save();
+          this.ctx.font = `${style.fontItalic ? 'italic ' : ''}${style.fontBold ? 'bold ' : ''}${fontSize}px 'Caveat', cursive`;
+          const lines = this.renderer.wrapTextWithOffsets(this.ctx, el.text, el.maxWidth);
+          const lineHeight = fontSize * 1.2;
+          const totalHeight = lines.length * lineHeight;
+          const startY = el.y - totalHeight / 2 + lineHeight / 2;
+          const lowerText = el.text.toLowerCase();
+          const q = this.searchQuery;
+          const matchRanges = [];
+          let mPos = 0;
+          while ((mPos = lowerText.indexOf(q, mPos)) !== -1) {
+            matchRanges.push({ start: mPos, end: mPos + q.length });
+            mPos += q.length;
+          }
+          this.ctx.fillStyle = 'rgba(255, 200, 50, 0.45)';
+          for (let li = 0; li < lines.length; li++) {
+            const { text: lineText, startOffset } = lines[li];
+            const lineEnd = startOffset + lineText.length;
+            const lineY = startY + li * lineHeight;
+            const linePixelWidth = this.ctx.measureText(lineText).width;
+            const lineStartX = isCentered ? el.x - linePixelWidth / 2 : el.x;
+            for (const { start, end } of matchRanges) {
+              const overlapStart = Math.max(start, startOffset);
+              const overlapEnd = Math.min(end, lineEnd);
+              if (overlapStart >= overlapEnd) continue;
+              const preWidth = this.ctx.measureText(lineText.substring(0, overlapStart - startOffset)).width;
+              const matchWidth = this.ctx.measureText(lineText.substring(overlapStart - startOffset, overlapEnd - startOffset)).width;
+              this.ctx.fillRect(lineStartX + preWidth - 1, lineY - fontSize * 0.5, matchWidth + 2, fontSize);
+            }
+          }
+          this.ctx.restore();
+        } else {
+          // Marching-ants ring for frames (the frame name IS the match, no sub-word target)
+          const b = this.getElementBounds(el);
+          const pad = 14;
+          const pulse = 0.5 + 0.3 * Math.sin(t / 350);
+          this.ctx.save();
+          this.ctx.strokeStyle = `rgba(185, 85, 48, ${pulse})`;
+          this.ctx.lineWidth = 2.5 / this.zoom;
+          const dashLen = 10 / this.zoom;
+          const gapLen  = 6  / this.zoom;
+          this.ctx.setLineDash([dashLen, gapLen]);
+          this.ctx.lineDashOffset = -(t / 60) % (dashLen + gapLen);
+          this.ctx.beginPath();
+          const rx = b.minX - pad, ry = b.minY - pad;
+          const rw = (b.maxX - b.minX) + pad * 2;
+          const rh = (b.maxY - b.minY) + pad * 2;
+          const r  = Math.min(6 / this.zoom, rw / 2, rh / 2);
+          this.ctx.roundRect(rx, ry, rw, rh, r);
+          this.ctx.stroke();
+          this.ctx.setLineDash([]);
+          this.ctx.restore();
+        }
+      }
+    }
+
     this.ctx.restore();
   }
 }

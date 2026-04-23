@@ -392,8 +392,138 @@ document.addEventListener('DOMContentLoaded', () => {
   setupExport(canvasState);
   setupTheme(canvasState);
   setupFramesPanel(canvasState, presentationEngine);
+  setupSearch(canvasState);
 });
 
+
+function animatePanToElement(el, state, animRef) {
+  const b = state.getElementBounds(el);
+  const bW = Math.max(b.maxX - b.minX, 1);
+  const bH = Math.max(b.maxY - b.minY, 1);
+  const bcx = (b.minX + b.maxX) / 2;
+  const bcy = (b.minY + b.maxY) / 2;
+
+  const P = 80;
+  const W = window.innerWidth, H = window.innerHeight;
+  const targetZoom = Math.min((W - 2*P) / bW, (H - 2*P) / bH, 2.5);
+  const targetPanX = W/2 - bcx * targetZoom;
+  const targetPanY = H/2 - bcy * targetZoom;
+
+  const startZoom = state.zoom;
+  const startPanX = state.pan.x, startPanY = state.pan.y;
+  const duration = 650;
+  const startTime = performance.now();
+
+  if (animRef.id) cancelAnimationFrame(animRef.id);
+
+  const tick = (now) => {
+    const t = Math.min((now - startTime) / duration, 1);
+    const e = t < 0.5 ? 16*t*t*t*t*t : 1 - Math.pow(-2*t+2, 5)/2;
+    state.zoom   = startZoom + (targetZoom - startZoom) * e;
+    state.pan.x  = startPanX + (targetPanX - startPanX) * e;
+    state.pan.y  = startPanY + (targetPanY - startPanY) * e;
+    state.isDirty = true;
+    if (t < 1) animRef.id = requestAnimationFrame(tick);
+  };
+  animRef.id = requestAnimationFrame(tick);
+}
+
+function setupSearch(canvasState) {
+  const bar      = document.getElementById('search-bar');
+  const input    = document.getElementById('search-input');
+  const countEl  = document.getElementById('search-count');
+  const prevBtn  = document.getElementById('search-prev');
+  const nextBtn  = document.getElementById('search-next');
+  const closeBtn = document.getElementById('search-close');
+
+  let results = [];
+  let cursor  = -1;
+  const animRef = { id: null };
+
+  function open() {
+    bar.classList.remove('hidden');
+    input.focus();
+    input.select();
+    runSearch();
+  }
+
+  function close() {
+    bar.classList.add('hidden');
+    canvasState.searchHighlightId = null;
+    canvasState.searchQuery = null;
+    canvasState.isDirty = true;
+    if (animRef.id) cancelAnimationFrame(animRef.id);
+  }
+
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.code === 'KeyF') {
+      e.preventDefault();
+      bar.classList.contains('hidden') ? open() : input.focus();
+    }
+  }, { capture: true });
+
+  closeBtn.addEventListener('click', close);
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { close(); return; }
+    if (e.key === 'Enter')  { e.shiftKey ? navigate(-1) : navigate(1); }
+    e.stopPropagation();
+  });
+
+  function runSearch() {
+    const q = input.value.trim().toLowerCase();
+    if (!q) {
+      results = []; cursor = -1;
+      updateCount();
+      canvasState.searchHighlightId = null;
+      canvasState.searchQuery = null;
+      canvasState.isDirty = true;
+      return;
+    }
+    canvasState.searchQuery = q;
+    results = canvasState.elements.filter(el => {
+      if (el.type === 'text')  return el.text?.toLowerCase().includes(q);
+      if (el.type === 'frame') return el.name?.toLowerCase().includes(q);
+      return false;
+    });
+    cursor = results.length > 0 ? 0 : -1;
+    updateCount();
+    focusCurrent();
+  }
+
+  function navigate(dir) {
+    if (results.length === 0) return;
+    cursor = (cursor + dir + results.length) % results.length;
+    updateCount();
+    focusCurrent();
+  }
+
+  function focusCurrent() {
+    if (cursor < 0 || cursor >= results.length) return;
+    const el = results[cursor];
+    canvasState.searchHighlightId = el.id;
+    canvasState.isDirty = true;
+    animatePanToElement(el, canvasState, animRef);
+  }
+
+  function updateCount() {
+    countEl.className = 'search-count';
+    if (!input.value.trim()) { countEl.textContent = ''; return; }
+    if (results.length === 0) {
+      countEl.textContent = 'no results';
+      countEl.classList.add('no-results');
+    } else {
+      countEl.textContent = `${cursor + 1}/${results.length}`;
+      countEl.classList.add('has-results');
+    }
+    prevBtn.disabled = results.length <= 1;
+    nextBtn.disabled = results.length <= 1;
+  }
+
+  input.addEventListener('input', runSearch);
+  prevBtn.addEventListener('click', () => navigate(-1));
+  nextBtn.addEventListener('click', () => navigate(1));
+}
 
 function applyFontSize(state, size) {
   state.currentStyle.fontSize = size;

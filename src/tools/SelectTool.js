@@ -53,36 +53,41 @@ export class SelectTool {
     this.toggleElement = null;
     this.wasSelectedBeforeClick = false;
     this.originalPositions = [];
+    this.isMovingEndpoint = false;
+    this.endpointElement = null;
+    this.endpointHandle = null;
+    this.resizeOriginal = null;
   }
 
   onPointerDown(pos, e) {
-    // Check if we clicked a resize handle of a selected text element
-    const selectedText = this.state.selection.find(el => el.type === 'text');
-    if (selectedText) {
-      const x = selectedText.x;
-      const y = selectedText.y;
-      const fontSize = selectedText.style?.fontSize || 24;
-      const width  = selectedText.width  || 80;
-      const height = selectedText.height || fontSize * 1.2;
-      const isCentered = selectedText.textAlign === 'center';
-      const handles = isCentered ? {
-        'n': { x: x,             y: y - height / 2 },
-        'e': { x: x + width / 2, y: y },
-        's': { x: x,             y: y + height / 2 },
-        'w': { x: x - width / 2, y: y }
-      } : {
-        'n': { x: x + width / 2, y: y - height / 2 },
-        'e': { x: x + width,     y: y },
-        's': { x: x + width / 2, y: y + height / 2 },
-        'w': { x: x,             y: y }
-      };
-
-      for (const [key, hPos] of Object.entries(handles)) {
-        const dist = Math.sqrt(Math.pow(pos.x - hPos.x, 2) + Math.pow(pos.y - hPos.y, 2));
-        if (dist < 10) {
+    // Check handles on selected elements (resize for shapes/text, endpoints for line/arrow)
+    for (const el of this.state.selection) {
+      if (el.type === 'text') {
+        const handle = this._getTextResizeHandle(pos, el);
+        if (handle) {
           this.isResizing = true;
-          this.resizeElement = selectedText;
-          this.resizeHandle = key;
+          this.resizeElement = el;
+          this.resizeHandle = handle;
+          this.dragStart = { x: pos.x, y: pos.y };
+          return;
+        }
+      } else if (el.type === 'rectangle' || el.type === 'ellipse' || el.type === 'frame') {
+        const handle = this._getShapeResizeHandle(pos, el);
+        if (handle) {
+          this.isResizing = true;
+          this.resizeElement = el;
+          this.resizeHandle = handle;
+          this.dragStart = { x: pos.x, y: pos.y };
+          this._normalizeElement(el);
+          this.resizeOriginal = { x: el.x, y: el.y, width: el.width, height: el.height };
+          return;
+        }
+      } else if (el.type === 'line' || el.type === 'arrow') {
+        const handle = this._getEndpointHandle(pos, el);
+        if (handle) {
+          this.isMovingEndpoint = true;
+          this.endpointElement = el;
+          this.endpointHandle = handle;
           this.dragStart = { x: pos.x, y: pos.y };
           return;
         }
@@ -139,26 +144,75 @@ export class SelectTool {
     if (this.isResizing) {
       const el = this.resizeElement;
       const handle = this.resizeHandle;
-      const currentWidth = el.maxWidth || el.width || 80;
-      const isCentered = el.textAlign === 'center';
 
-      if (isCentered) {
-        if (handle === 'e') {
-          el.maxWidth = Math.max(50, (pos.x - el.x) * 2);
-        } else if (handle === 'w') {
-          el.maxWidth = Math.max(50, (el.x - pos.x) * 2);
+      if (el.type === 'text') {
+        const currentWidth = el.maxWidth || el.width || 80;
+        const isCentered = el.textAlign === 'center';
+        if (isCentered) {
+          if (handle === 'e') el.maxWidth = Math.max(50, (pos.x - el.x) * 2);
+          else if (handle === 'w') el.maxWidth = Math.max(50, (el.x - pos.x) * 2);
+        } else {
+          if (handle.includes('e')) {
+            el.maxWidth = Math.max(50, pos.x - el.x);
+          } else if (handle.includes('w')) {
+            const rightEdge = el.x + currentWidth;
+            const newX = Math.min(rightEdge - 50, pos.x);
+            el.maxWidth = Math.max(50, rightEdge - newX);
+            el.x = newX;
+          }
+        }
+        // n / s: text height is auto-determined by content — no-op
+      } else {
+        const orig = this.resizeOriginal;
+        const dx = pos.x - this.dragStart.x;
+        const dy = pos.y - this.dragStart.y;
+        const MIN = 10;
+        if (handle.includes('n')) {
+          const newH = Math.max(MIN, orig.height - dy);
+          el.y = orig.y + orig.height - newH;
+          el.height = newH;
+        }
+        if (handle.includes('s')) {
+          el.height = Math.max(MIN, orig.height + dy);
+        }
+        if (handle.includes('w')) {
+          const newW = Math.max(MIN, orig.width - dx);
+          el.x = orig.x + orig.width - newW;
+          el.width = newW;
+        }
+        if (handle.includes('e')) {
+          el.width = Math.max(MIN, orig.width + dx);
+        }
+        this.updateBindings();
+      }
+      this.state.isDirty = true;
+      return;
+    }
+
+    if (this.isMovingEndpoint) {
+      const el = this.endpointElement;
+      const snapEl = this.state.getElementAt(pos, el.id, ['rectangle', 'ellipse', 'text']);
+      if (this.endpointHandle === 'start') {
+        if (snapEl) {
+          this.state.hoveredElement = snapEl;
+          const cp = this.state.getClosestConnectionPoint(pos, snapEl);
+          if (cp) { el.x = cp.point.x; el.y = cp.point.y; el.startBinding = { id: snapEl.id, key: cp.key }; }
+        } else {
+          this.state.hoveredElement = null;
+          el.x = pos.x; el.y = pos.y;
+          delete el.startBinding;
         }
       } else {
-        if (handle.includes('e')) {
-          el.maxWidth = Math.max(50, pos.x - el.x);
-        } else if (handle.includes('w')) {
-          const rightEdge = el.x + currentWidth;
-          const newX = Math.min(rightEdge - 50, pos.x);
-          el.maxWidth = Math.max(50, rightEdge - newX);
-          el.x = newX;
+        if (snapEl) {
+          this.state.hoveredElement = snapEl;
+          const cp = this.state.getClosestConnectionPoint(pos, snapEl);
+          if (cp) { el.x2 = cp.point.x; el.y2 = cp.point.y; el.endBinding = { id: snapEl.id, key: cp.key }; }
+        } else {
+          this.state.hoveredElement = null;
+          el.x2 = pos.x; el.y2 = pos.y;
+          delete el.endBinding;
         }
       }
-      // n / s: text height is auto-determined by content — no-op
       this.state.isDirty = true;
       return;
     }
@@ -314,6 +368,61 @@ export class SelectTool {
     return { x: el.x, y: el.y };
   }
 
+  _getTextResizeHandle(pos, el) {
+    const x = el.x, y = el.y;
+    const fontSize = el.style?.fontSize || 24;
+    const width = el.width || 80;
+    const height = el.height || fontSize * 1.2;
+    const isCentered = el.textAlign === 'center';
+    const handles = isCentered ? {
+      'n': { x: x,             y: y - height / 2 },
+      'e': { x: x + width / 2, y: y },
+      's': { x: x,             y: y + height / 2 },
+      'w': { x: x - width / 2, y: y }
+    } : {
+      'n': { x: x + width / 2, y: y - height / 2 },
+      'e': { x: x + width,     y: y },
+      's': { x: x + width / 2, y: y + height / 2 },
+      'w': { x: x,             y: y }
+    };
+    for (const [key, hPos] of Object.entries(handles)) {
+      if (Math.hypot(pos.x - hPos.x, pos.y - hPos.y) < 10) return key;
+    }
+    return null;
+  }
+
+  _getShapeResizeHandle(pos, el) {
+    const rx = el.width < 0 ? el.x + el.width : el.x;
+    const ry = el.height < 0 ? el.y + el.height : el.y;
+    const rw = Math.abs(el.width);
+    const rh = Math.abs(el.height);
+    const handles = {
+      'nw': { x: rx,          y: ry          },
+      'n':  { x: rx + rw / 2, y: ry          },
+      'ne': { x: rx + rw,     y: ry          },
+      'e':  { x: rx + rw,     y: ry + rh / 2 },
+      'se': { x: rx + rw,     y: ry + rh     },
+      's':  { x: rx + rw / 2, y: ry + rh     },
+      'sw': { x: rx,          y: ry + rh     },
+      'w':  { x: rx,          y: ry + rh / 2 }
+    };
+    for (const [key, hPos] of Object.entries(handles)) {
+      if (Math.hypot(pos.x - hPos.x, pos.y - hPos.y) < 10) return key;
+    }
+    return null;
+  }
+
+  _getEndpointHandle(pos, el) {
+    if (Math.hypot(pos.x - el.x, pos.y - el.y) < 10) return 'start';
+    if (Math.hypot(pos.x - el.x2, pos.y - el.y2) < 10) return 'end';
+    return null;
+  }
+
+  _normalizeElement(el) {
+    if (el.width < 0) { el.x += el.width; el.width = -el.width; }
+    if (el.height < 0) { el.y += el.height; el.height = -el.height; }
+  }
+
   onPointerUp(pos, e) {
     if (this.isSelecting) {
       this.isSelecting = false;
@@ -338,9 +447,21 @@ export class SelectTool {
       return;
     }
 
+    if (this.isMovingEndpoint) {
+      this.isMovingEndpoint = false;
+      this.endpointElement = null;
+      this.endpointHandle = null;
+      this.state.hoveredElement = null;
+      this.state.saveHistory();
+      this.state.saveToLocalStorage();
+      this.state.isDirty = true;
+      return;
+    }
+
     if (this.isResizing) {
       this.isResizing = false;
       this.resizeElement = null;
+      this.resizeOriginal = null;
       this.state.alignGuides = [];
       this.state.saveHistory();
       this.state.saveToLocalStorage();
