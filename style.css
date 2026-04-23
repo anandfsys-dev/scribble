@@ -508,6 +508,45 @@ canvas {
   opacity: 0.9;
 }
 
+/* ── Export Dropdown ─────────────────────────────────────────────── */
+.export-dropdown {
+  position: relative;
+}
+
+.export-dropdown-btn {
+  gap: 4px;
+}
+
+.export-chevron {
+  opacity: 0.55;
+  transition: transform 0.15s ease;
+}
+
+.export-dropdown.open .export-chevron {
+  transform: rotate(180deg);
+}
+
+.export-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 148px;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel), 0 8px 32px rgba(43, 29, 18, 0.16);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 5px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  z-index: 50;
+  animation: ctx-appear 0.1s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.export-dropdown-menu.hidden { display: none; }
+
 /* ── Theme Toggle Icons ─────────────────────────────────────────── */
 #sun-icon  { display: none; }
 #moon-icon { display: block; }

@@ -314,6 +314,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelector(`[data-action="${a}"]`).style.display = hasOrderable ? 'flex' : 'none';
     });
 
+    document.getElementById('ctx-png-sep').style.display = hasSelection ? 'block' : 'none';
+    document.getElementById('ctx-png-btn').style.display = hasSelection ? 'flex' : 'none';
+
     contextMenu.style.left = '0';
     contextMenu.style.top = '0';
     contextMenu.classList.remove('hidden');
@@ -403,6 +406,8 @@ document.addEventListener('DOMContentLoaded', () => {
           canvasState.isDirty = true;
         }
         break;
+
+      case 'export-png-selection': Exporter.exportPng(canvasState.selection); break;
 
       case 'group':           canvasState.groupElements();  break;
       case 'ungroup':         canvasState.ungroupElements(); break;
@@ -845,14 +850,39 @@ function setupExport(state) {
     state.clearCanvas();
   });
 
-  document.getElementById('btn-export-json').addEventListener('click', () => {
-    Exporter.exportJson(state.elements);
-  });
-  
   document.getElementById('btn-reset-view').addEventListener('click', () => {
     state.resetView();
   });
-  
+
+  // Export dropdown
+  const exportDropdownWrapper = document.querySelector('.export-dropdown');
+  const exportDropdownMenu    = document.getElementById('export-dropdown-menu');
+
+  document.getElementById('btn-export-toggle').addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = exportDropdownWrapper.classList.toggle('open');
+    exportDropdownMenu.classList.toggle('hidden', !isOpen);
+  });
+
+  const closeExportDropdown = () => {
+    exportDropdownWrapper.classList.remove('open');
+    exportDropdownMenu.classList.add('hidden');
+  };
+
+  document.addEventListener('pointerdown', (e) => {
+    if (!exportDropdownWrapper.contains(e.target)) closeExportDropdown();
+  });
+
+  document.getElementById('btn-export-json').addEventListener('click', () => {
+    closeExportDropdown();
+    Exporter.exportJson(state.elements);
+  });
+
+  document.getElementById('btn-export-png').addEventListener('click', () => {
+    closeExportDropdown();
+    Exporter.exportPng(state.elements);
+  });
+
   const importBtn = document.getElementById('btn-import-json');
   const importInput = document.getElementById('input-import-json');
   
